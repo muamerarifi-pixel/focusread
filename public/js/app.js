@@ -146,15 +146,16 @@ async function saveMeta(meta, { pos = false } = {}) {
 const debounce = (fn, ms) => { let id; return (...a) => { clearTimeout(id); id = setTimeout(() => fn(...a), ms); }; };
 
 /* ================= Toasts & HUD ================= */
-function toast(msg, { action, onAction, duration = 4200, sticky = false } = {}) {
+function toast(msg, { action, onAction, actions, duration = 4200, sticky = false } = {}) {
   const el = document.createElement('div');
   el.className = 'toast'; el.setAttribute('role', 'status');
   const span = document.createElement('span'); span.textContent = msg; el.appendChild(span);
   let timer;
   const close = () => { clearTimeout(timer); el.classList.add('out'); setTimeout(() => el.remove(), 220); };
-  if (action) {
-    const b = document.createElement('button'); b.type = 'button'; b.textContent = action;
-    b.onclick = () => { close(); onAction && onAction(); };
+  const btns = actions || (action ? [{ label: action, fn: onAction }] : []);
+  for (const a of btns) {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = a.label;
+    b.onclick = () => { close(); a.fn && a.fn(); };
     el.appendChild(b);
   }
   $('#toasts').appendChild(el);
@@ -273,7 +274,6 @@ let libDocs = [];
 async function renderLibrary() {
   libDocs = await DB.listDocs();
   renderNotesHome();
-  renderContinue();
   const q = ($('#libSearch').value || '').trim().toLowerCase();
   const list = q ? libDocs.filter(d => (d.title + ' ' + (d.author || '')).toLowerCase().includes(q)) : libDocs;
   const box = $('#libList');
@@ -1853,7 +1853,8 @@ function selectionOrigRange() {
 function saveMarkRange(oa, ob, { tok } = {}) {
   const list = marksOf();
   const ex = list.find(m => m.kind !== 'b' && m.o <= ob && m.oe >= oa);
-  if (ex) { hud(t('mark.exists')); editNote(ex.id); return null; }
+  // The same gesture on a saved sentence takes it off again (with a way back).
+  if (ex) { unsaveMark(ex); return null; }
   const text = R.T.words.slice(oa, ob + 1).filter(Boolean).join(' ').slice(0, 2000);
   const m = { id: DB.uid(), o: oa, oe: ob, text, note: '', ch: curChapterTitle(tok ?? TX.tokenOfOrig(R.T, oa)), at: Date.now() };
   list.push(m);
@@ -1861,8 +1862,31 @@ function saveMarkRange(oa, ob, { tok } = {}) {
   saveMeta(R.doc);
   buildMarks();
   render();
-  toast('★ ' + t('mark.saved'), { action: t('mark.addNote'), onAction: () => editNote(m.id), duration: 5000 });
+  toast('★ ' + t('mark.saved'), { actions: [{ label: t('mark.undoSave'), fn: () => dropMark(m) }, { label: t('mark.addNote'), fn: () => editNote(m.id) }], duration: 6000 });
   return m;
+}
+/** Remove a saved sentence from the open book without asking (used by "Undo"). */
+function dropMark(m) {
+  const ms = marksOf(), i = ms.indexOf(m);
+  if (i < 0) return -1;
+  ms.splice(i, 1);
+  saveMeta(R.doc); buildMarks(); render();
+  if ($('#tocDialog').open) renderMarks();
+  return i;
+}
+/** Take a saved sentence off while reading; "Rikthe" puts it back with its note. */
+function unsaveMark(m) {
+  const i = dropMark(m);
+  if (i < 0) return;
+  hud(t('mark.removed'));
+  toast(t('mark.removed'), { action: t('mark.undo'), duration: 7000, onAction: () => {
+    const ms = marksOf();
+    if (ms.includes(m)) return;
+    ms.splice(Math.min(i, ms.length), 0, m);
+    ms.sort((x, y) => x.o - y.o);
+    saveMeta(R.doc); buildMarks(); render();
+    if ($('#tocDialog').open) renderMarks();
+  } });
 }
 function markSentenceAt(tok) {
   if (!R.T || !R.doc) return;
@@ -2152,21 +2176,7 @@ $('#nhList').addEventListener('click', e => {
 });
 $$('#nhFilter button').forEach(b => b.addEventListener('click', () => { nhFilter = b.dataset.f; nhLimit = 6; renderNotesHome(); }));
 
-/* ================= Continue reading (one tap) ================= */
-function renderContinue() {
-  const box = $('#continueBox');
-  if (!box) return;
-  const cand = (libDocs || []).filter(d => !d.finished && d.pos > 0);
-  const d = cand.sort((a, b) => (b.openedAt || b.posAt || 0) - (a.openedAt || a.posAt || 0))[0];
-  box.hidden = !d;
-  if (!d) return;
-  const pct = d.words ? Math.min(99, Math.round((d.pos / d.words) * 100)) : 0;
-  box.dataset.id = d.id;
-  $('#cbTitle').textContent = d.title;
-  $('#cbMeta').textContent = t('cont.m', { p: pct, t: fmtTime(TX.estimateMinutes(Math.max(0, d.words - d.pos), S)) });
-  $('#cbBar').style.width = pct + '%';
-}
-$('#continueBtn').addEventListener('click', () => { const id = $('#continueBox').dataset.id; if (id) openReader(id, { resume: true }); });
+/* The "continue reading" card at the top of the home page was removed (v6.6). */
 
 async function init() {
   setLang(S.lang);
