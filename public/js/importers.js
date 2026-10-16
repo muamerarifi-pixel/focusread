@@ -362,9 +362,34 @@ function srtToText(s) {
   return s.replace(/\r/g, '').split(/\n\n+/).map(block => block.split('\n').filter(l => !/^\d+$/.test(l.trim()) && !/-->/.test(l)).join(' ')).join('\n\n');
 }
 
+/**
+ * Phones often hand over files without a usable name or type (Google Drive, WhatsApp,
+ * "content://" downloads, EPUBs typed as application/octet-stream). Look at the first bytes.
+ */
+async function sniffKind(file) {
+  try {
+    const head = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
+    const str = new TextDecoder('latin1').decode(head);
+    if (str.startsWith('%PDF')) return 'pdf';
+    if (head[0] === 0x50 && head[1] === 0x4b) { // PK.. zip container
+      if (str.includes('application/epub+zip') || str.includes('META-INF/')) return 'epub';
+      if (str.includes('word/') || str.includes('[Content_Types].xml')) return 'docx';
+      // look further into the zip directory for the tell-tale entries
+      const tail = new TextDecoder('latin1').decode(new Uint8Array(await file.slice(Math.max(0, file.size - 65536)).arrayBuffer()));
+      if (tail.includes('META-INF/container.xml') || tail.includes('.opf')) return 'epub';
+      if (tail.includes('word/document.xml')) return 'docx';
+      return null;
+    }
+    if (/^\s*</.test(str) && /<html|<body|<p[ >]/i.test(str)) return 'html';
+  } catch {}
+  return null;
+}
+
 /** Import a File. Returns { title, text, kind } */
 export async function importFile(file, onProgress) {
-  const kind = detectKind(file);
+  let kind = detectKind(file);
+  // trust the content over a missing or generic extension/type
+  if (!kind || kind === 'txt' || !ext(file.name)) kind = (await sniffKind(file)) || kind;
   if (!kind) throw Object.assign(new Error('unsupported'), { code: 'unsupported' });
   let r;
   if (kind === 'pdf') r = await importPdf(file, onProgress);

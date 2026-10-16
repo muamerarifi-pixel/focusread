@@ -187,7 +187,11 @@ $('#pasteBtn').addEventListener('click', async () => {
   } catch { toast(t('toast.pasteFail')); textInput.focus(); }
 });
 const fileInput = $('#fileInput');
-fileInput.accept = ACCEPT;
+// On phones a list of types makes the system picker grey out EPUBs and PDFs that were saved with a
+// generic type (very common on Android and in the iOS Files app). There we show every file and check
+// the type after you pick; on computers the filter stays, so the dialog only lists readable files.
+const phone = /android|iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+if (!phone) fileInput.accept = ACCEPT;
 $('#fileBtn').addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', () => { handleFiles([...fileInput.files]); fileInput.value = ''; });
 $('#startBtn').addEventListener('click', readComposer);
@@ -1516,6 +1520,7 @@ async function handleIncoming() {
     await renderLibrary();
     toast(t('toast.shared'), { action: t('lib.read'), onAction: () => openReader(meta.id), duration: 8000 });
   }
+  if (params.get('share') === '1') await takeSharedFiles();
   if (location.search || location.hash) history.replaceState(null, '', '/');
   if ('launchQueue' in window) {
     window.launchQueue.setConsumer(async lp => {
@@ -1525,6 +1530,31 @@ async function handleIncoming() {
       if (files.length) handleFiles(files);
     });
   }
+}
+
+/** Files (and text) shared to FocusRead from another app, parked by the service worker. */
+async function takeSharedFiles() {
+  if (!('caches' in window)) return;
+  try {
+    const cache = await caches.open('fr-share');
+    const reqs = (await cache.keys()).filter(r => new URL(r.url).pathname.startsWith('/__share/'));
+    const files = [];
+    for (const r of reqs) {
+      const res = await cache.match(r);
+      if (!res) continue;
+      if (r.url.endsWith('/text')) {
+        const j = await res.json().catch(() => null);
+        const body = j ? [j.text, j.url && !String(j.text || '').includes(j.url) ? j.url : ''].filter(Boolean).join('\n\n') : '';
+        if (body.trim()) { const meta = await addDoc({ title: j.title || undefined, text: TX.normalize(body), kind: 'share' }); toast(t('toast.shared'), { action: t('lib.read'), onAction: () => openReader(meta.id), duration: 8000 }); }
+      } else {
+        const name = decodeURIComponent(res.headers.get('X-Name') || 'file');
+        const blob = await res.blob();
+        files.push(new File([blob], name, { type: blob.type && blob.type !== 'application/octet-stream' ? blob.type : '' }));
+      }
+      await cache.delete(r);
+    }
+    if (files.length) await handleFiles(files);
+  } catch (e) { console.warn('share import failed', e); }
 }
 
 /* ================= Init ================= */
