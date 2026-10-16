@@ -23,7 +23,7 @@ const saveTombs = () => { try { localStorage.setItem(TOMBS, JSON.stringify(tombs
 save();
 
 let keys = null; // { sid, key }
-let running = null, again = false, timer = null;
+let running = null, again = false, timer = null, retries = 0;
 const listeners = new Set();
 let status = { state: st.code ? 'idle' : 'off', error: '', lastSync: st.lastSync };
 function setStatus(s) { status = { ...status, ...s }; listeners.forEach(fn => { try { fn(status); } catch {} }); }
@@ -94,7 +94,7 @@ const decJSON = async s => JSON.parse(td.decode(await decBytes(s)));
 /* ---------- API ---------- */
 async function api(op, payload = {}) {
   const ctrl = new AbortController();
-  const to = setTimeout(() => ctrl.abort(), 30000);
+  const to = setTimeout(() => ctrl.abort(), 25000);
   try {
     const r = await fetch(API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op, sid: keys.sid, ...payload }), signal: ctrl.signal, cache: 'no-store' });
     const j = await r.json().catch(() => ({}));
@@ -240,10 +240,12 @@ export async function syncNow() {
       st.since = Math.max(0, pulled.now - 5000);
       st.lastSync = Date.now();
       save();
-      setStatus({ state: 'ok', error: '', lastSync: st.lastSync });
+      retries = 0; setStatus({ state: 'ok', error: '', lastSync: st.lastSync });
     } catch (e) {
       console.warn('sync failed', e);
       setStatus({ state: 'error', error: e.code || e.message || String(e) });
+      // a slow or dropped request: try again soon (5 s, 15 s, 45 s) instead of waiting for the next minute
+      if (retries < 3 && e.code !== 'invalid' && e.code !== 'not_configured') { const d = 5000 * 3 ** retries++; setTimeout(() => { if (st.code) syncNow(); }, d); }
     }
   })();
   try { await running; } finally {
