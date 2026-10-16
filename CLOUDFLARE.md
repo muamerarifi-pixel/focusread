@@ -1,5 +1,7 @@
 # FocusRead on Cloudflare Workers
 
+> Setup is done: the worker deploys automatically from this repo's `main` branch. See README.md for day-to-day use. This file records how the app moved from Vercel.
+
 This repo is FocusRead, moved from Vercel (focusread-v6.vercel.app) to Cloudflare Workers.
 
 - `public/` holds the app's files, served by Workers Static Assets (free, no request limit).
