@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="sq" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FocusRead — Lexim i fokusuar</title>
+  <meta name="description" content="Lexues i shpejtë dhe i qetë: fjalë pas fjale me ritëm të zgjuar, bibliotekë, PDF/EPUB/DOCX. Punon 100% offline në kompjuter dhe telefon.">
+  <meta name="theme-color" content="#fbfaf8">
+  <meta name="color-scheme" content="light dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="FocusRead">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <link rel="preload" href="/fonts/atkinson-hyperlegible-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="modulepreload" href="/js/app.js">
+  <link rel="modulepreload" href="/js/i18n.js">
+  <link rel="modulepreload" href="/js/text.js">
+  <link rel="modulepreload" href="/js/structure.js">
+  <link rel="modulepreload" href="/js/db.js">
+  <link rel="modulepreload" href="/js/importers.js">
+  <link rel="modulepreload" href="/js/stats.js">
+  <link rel="modulepreload" href="/js/sync.js">
+  <link rel="modulepreload" href="/js/comfort.js">
+  <script src="/js/boot.js"></script>
+  <script src="/js/paper.js"></script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"/></symbol>
+      <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.2" fill="currentColor"/><rect x="14" y="5" width="4" height="14" rx="1.2" fill="currentColor"/></symbol>
+      <symbol id="i-left" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-right" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-restart" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4.5h4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-sentence" viewBox="0 0 24 24"><path d="M6 5v14M19 6l-8 6 8 6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-sentence-next" viewBox="0 0 24 24"><path d="M18 5v14M5 6l8 6-8 6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-minus" viewBox="0 0 24 24"><path d="M6 12h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></g></symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-shrink" viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M7 9l5-5 5 5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-clip" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4.5V3h6v1.5M9 10h6M9 14h4"/></g></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></g></symbol>
+      <symbol id="i-help" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.4"/><circle cx="12" cy="17" r=".6" fill="currentColor"/></g></symbol>
+      <symbol id="i-flame" viewBox="0 0 24 24"><path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5.2 1.6 1 2.5 2 2.5-.5-3 .2-5.8 1-8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+      <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" transform="translate(0 -1)"/></symbol>
+      <symbol id="i-words" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h3M17 12h3"/><path d="M12 5v2M12 17v2" stroke="var(--focus)"/><rect x="9" y="9.5" width="6" height="5" rx="1"/></g></symbol>
+      <symbol id="i-list" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h7"/><path d="M4.5 6h.01M4.5 12h.01M4.5 18h.01" stroke-width="3"/></g></symbol>
+      <symbol id="i-speaker" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.2 6.5a7.5 7.5 0 0 1 0 11"/></g></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M12 3.8l2.5 5.2 5.6.7-4.1 3.9 1 5.6L12 16.5l-5 2.7 1-5.6L3.9 9.7l5.6-.7z"/></symbol>
+      <symbol id="i-bookmark" viewBox="0 0 24 24"><path style="fill:var(--bm-fill,none)" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M6.5 3.8h11v16.4l-5.5-4.1-5.5 4.1z"/></symbol>
+      <symbol id="i-page" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 6h14M5 10h14M5 14h8M5 18h11"/><path d="M14.5 14h4.5" stroke="var(--focus)"/></g></symbol>
+      <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18h10.5a4 4 0 0 0 .6-7.96A6 6 0 0 0 6.3 9.1 4.5 4.5 0 0 0 7 18z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></g></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+      <symbol id="i-rotate" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="10" width="14" height="9.5" rx="2"/><path d="M9 6.2A8 8 0 0 1 20.5 10"/><path d="M21.6 6.6l-1.1 3.6-3.5-1.3"/></g></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.2h7a2 2 0 0 1 2 2v7.8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></g></symbol>
+    </defs>
+  </svg>
+
+  <div class="app" id="app">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="FocusRead">
+        <span class="brand-mark" aria-hidden="true">F<i>o</i></span>
+        <span class="brand-text"><strong>FocusRead</strong><span data-i18n="app.tag">lexim i fokusuar</span></span>
+      </a>
+      <div class="top-actions">
+        <span id="offlineBadge" class="pill hidden" data-i18n="offline">Offline</span>
+        <button id="installBtn" class="btn small hidden" type="button"><svg class="ic"><use href="#i-download"/></svg><span data-i18n="btn.install">Instalo</span></button>
+        <button id="syncBtn" class="btn ghost small icon-only sync-btn" type="button" data-i18n-title="sync.btn"><svg class="ic"><use href="#i-cloud"/></svg><i class="sync-dot"></i></button>
+        <button id="langBtn" class="btn ghost small icon-only lang-btn" type="button" data-i18n-title="tip.lang">EN</button>
+        <button id="settingsBtn" class="btn ghost small icon-only" type="button" data-i18n-title="btn.settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
+      </div>
+    </header>
+
+    <main class="main" id="homeView">
+      <section id="continueBox" class="continue" hidden>
+        <button id="continueBtn" class="continue-btn" type="button">
+          <span class="cb-play"><svg class="ic"><use href="#i-play"/></svg></span>
+          <span class="cb-txt"><span class="cb-k" data-i18n="cont.k"></span><span id="cbTitle" class="cb-t"></span><span id="cbMeta" class="cb-m"></span><span class="cb-bar"><i id="cbBar"></i></span></span>
+        </button>
+      </section>
+
+      <section class="library">
+        <div class="lib-head">
+          <h2 data-i18n="lib.title">Biblioteka</h2>
+          <label class="search"><svg class="ic"><use href="#i-search"/></svg><input id="libSearch" type="search" data-i18n-ph="lib.search" autocomplete="off"></label>
+        </div>
+        <div id="libList" class="lib-list"></div>
+        <div class="lib-foot">
+          <button id="backupBtn" class="btn ghost small" type="button"><svg class="ic"><use href="#i-download"/></svg><span data-i18n="lib.export">Ruaj kopje rezervë</span></button>
+          <button id="restoreBtn" class="btn ghost small" type="button"><svg class="ic"><use href="#i-upload"/></svg><span data-i18n="lib.restore">Rikthe kopjen</span></button>
+          <input type="file" id="restoreInput" accept=".json,application/json" hidden>
+        </div>
+      </section>
+
+      <section class="notes-home" id="notesHome" hidden>
+        <div class="lib-head"><h2 data-i18n="home.notes"></h2>
+          <div class="nh-filter" id="nhFilter"><button type="button" data-f="all" class="on"><span data-i18n="notes.all"></span> <b class="c"></b></button><button type="button" data-f="h"><span data-i18n="notes.marks"></span> <b class="c"></b></button><button type="button" data-f="b"><span data-i18n="notes.bms"></span> <b class="c"></b></button></div>
+        </div>
+        <div id="nhFolderHead" class="nh-fhead" hidden></div>
+        <div id="nhList" class="nh-list"></div>
+      </section>
+
+            <section class="hero">
+        <h1 data-i18n="home.title">Lexo më shumë, lodhu më pak.</h1>
+        <p data-i18n="home.sub"></p>
+      </section>
+
+      <section class="stats" id="stats" aria-live="polite"></section>
+
+      <section class="composer" id="dropZone">
+        <textarea id="textInput" data-i18n-ph="composer.ph" spellcheck="false" autocomplete="off"></textarea>
+        <div class="composer-bar">
+          <span id="wordCount" class="muted small">0</span>
+          <div class="composer-actions">
+            <input type="file" id="fileInput" multiple hidden>
+            <button id="fileBtn" class="btn ghost small" type="button"><svg class="ic"><use href="#i-upload"/></svg><span data-i18n="btn.import">Importo</span></button>
+            <button id="pasteBtn" class="btn ghost small" type="button"><svg class="ic"><use href="#i-clip"/></svg><span data-i18n="btn.paste">Ngjit</span></button>
+            <button id="clearBtn" class="btn ghost small icon-only" type="button" data-i18n-title="btn.clear"><svg class="ic"><use href="#i-x"/></svg></button>
+          </div>
+        </div>
+        <div class="drop-overlay" aria-hidden="true"><svg class="ic"><use href="#i-upload"/></svg><span data-i18n="drop.hint">Lësho skedarin këtu</span><small data-i18n="formats"></small></div>
+      </section>
+
+      <div class="start-row">
+        <button id="startBtn" class="btn primary large" type="button"><svg class="ic"><use href="#i-play"/></svg><span data-i18n="btn.readNow">Lexo tani</span></button>
+        <div class="quick-speed" role="group" aria-label="WPM">
+          <button class="btn ghost small icon-only" type="button" data-speed="-25" aria-label="-25"><svg class="ic"><use href="#i-minus"/></svg></button>
+          <span id="quickWpm" class="quick-wpm">300</span><span class="muted small" data-i18n="set.wpm">fjalë/min</span>
+          <button class="btn ghost small icon-only" type="button" data-speed="25" aria-label="+25"><svg class="ic"><use href="#i-plus"/></svg></button>
+        </div>
+        <span class="formats muted small" data-i18n="formats"></span>
+      </div>
+
+      <footer class="foot"><span>FocusRead v6.5 · offline PWA · sync</span> · <button class="link-btn" id="helpBtnHome" type="button" data-i18n="help.title">Shkurtoret</button></footer>
+    </main>
+  </div>
+
+  <!-- READER -->
+  <section id="readerView" class="reader" hidden aria-label="Reader">
+    <div class="reader-top">
+      <button id="closeReaderBtn" class="btn ghost small icon-only" type="button" data-i18n-title="tip.back"><svg class="ic"><use href="#i-back"/></svg></button>
+      <div class="reader-title-wrap">
+        <div class="reader-title-row"><div id="readerTitle" class="reader-title"></div><button id="chapterChip" class="chapter-chip" type="button" hidden><span class="ct"></span><span class="cl"></span></button></div>
+        <div id="progressTrack" class="progress-track" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Progress">
+          <div id="progressFill" class="progress-fill"></div><div id="progressThumb" class="progress-thumb"></div>
+        </div>
+        <div class="progress-text"><span id="progressText"></span><span id="progressPercent"></span><span id="timeRemain"></span></div>
+      </div>
+      <div class="reader-top-actions">
+        <button id="tocBtn" class="btn ghost small icon-only" type="button" data-i18n-title="tip.toc" hidden><svg class="ic"><use href="#i-list"/></svg></button>
+          <button id="ttsBtn" class="btn ghost small icon-only" type="button" data-i18n-title="tip.tts" aria-pressed="false"><svg class="ic"><use href="#i-speaker"/></svg></button>
+          <button id="modeBtn" class="btn ghost small icon-only" type="button" data-i18n-title="tip.mode"><svg class="ic"><use href="#i-page"/></svg></button>
+        <button id="rotBtn" class="btn ghost small icon-only" type="button" data-i18n-title="tip.rotate"><svg class="ic"><use href="#i-rotate"/></svg></button>
+        <button id="fsBtn" class="btn ghost small icon-only" type="button" data-i18n-title="tip.fullscreen"><svg class="ic"><use href="#i-expand"/></svg></button>
+        <button id="readerSettingsBtn" class="btn ghost small icon-only" type="button" data-i18n-title="btn.settings"><svg class="ic"><use href="#i-sliders"/></svg></button>
+      </div>
+    </div>
+
+    <div id="stageWrap" class="stage-wrap">
+      <div id="rsvp" class="rsvp">
+        <div class="guide top" aria-hidden="true"><span></span><i></i><span></span></div>
+        <div id="wordRow" class="word-row" aria-live="off">
+          <div class="cell left"><span id="ghostPrev" class="gw"></span><span id="wLeft" class="part"></span></div>
+          <div id="wPivot" class="cell pivot"></div>
+          <div class="cell right"><span id="wRight" class="part"></span><span id="ghostNext" class="gw"></span></div>
+        </div>
+        <div class="guide bottom" aria-hidden="true"><span></span><i></i><span></span></div>
+        <div id="sentenceTrail" class="sentence-trail"></div>
+        <div id="tapHint" class="tap-hint" data-i18n="reader.tapHint"></div>
+      </div>
+      <div id="pacer" class="pacer" hidden><div id="pacerPage" class="pacer-page"></div></div>
+      <div id="book" class="book" hidden><div id="bookSheet" class="book-sheet"><div id="bookRun" class="book-run"></div><div id="bookView" class="book-view"><div id="bookCols" class="book-cols"></div></div><div id="bookFoot" class="book-foot"></div></div></div>
+      <div id="hud" class="hud" aria-live="polite"></div>
+      <div id="pickBar" class="pick-bar" hidden><svg class="ic"><use href="#i-star"/></svg><span data-i18n="pick.hint"></span><button id="pickCancel" class="btn ghost small icon-only" type="button" data-i18n-title="btn.close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    </div>
+
+    <div class="reader-controls">
+      <div class="rc-group">
+        <button id="restartBtn" class="btn ghost icon-only hide-xs" type="button" data-i18n-title="tip.restart"><svg class="ic"><use href="#i-restart"/></svg></button>
+        <button id="bmBtn" class="btn ghost icon-only" type="button" data-i18n-title="tip.bm" aria-pressed="false"><svg class="ic"><use href="#i-bookmark"/></svg></button>
+            <button id="markBtn" class="btn ghost icon-only" type="button" data-i18n-title="tip.mark"><svg class="ic"><use href="#i-star"/></svg></button>
+            <button id="sentBtn" class="btn ghost icon-only" type="button" data-i18n-title="tip.sentence"><svg class="ic"><use href="#i-sentence"/></svg></button>
+        <button id="prevBtn" class="btn ghost icon-only" type="button" data-i18n-title="tip.prev"><svg class="ic"><use href="#i-left"/></svg></button>
+      </div>
+      <button id="playBtn" class="btn primary circle" type="button" data-i18n-title="tip.play"><svg class="ic"><use href="#i-play"/></svg></button>
+      <span id="bookPno" class="book-pno" aria-live="polite"></span>
+      <div class="rc-group">
+        <button id="nextBtn" class="btn ghost icon-only" type="button" data-i18n-title="tip.next"><svg class="ic"><use href="#i-right"/></svg></button>
+        <button id="sentNextBtn" class="btn ghost icon-only" type="button" data-i18n-title="tip.sentNext"><svg class="ic"><use href="#i-sentence-next"/></svg></button>
+        <div class="speed-ctl">
+          <button id="slowerBtn" class="btn ghost icon-only" type="button" data-i18n-title="tip.slower"><svg class="ic"><use href="#i-minus"/></svg></button>
+          <span id="wpmBadge" class="wpm-badge">300</span>
+          <button id="fasterBtn" class="btn ghost icon-only" type="button" data-i18n-title="tip.faster"><svg class="ic"><use href="#i-plus"/></svg></button>
+        </div>
+        <span class="size-ctl" role="group"><button id="sizeDownBtn" class="btn ghost small" type="button" data-i18n-title="tip.sizeDown"><span class="a-sm">A</span><b>−</b></button><i></i><button id="sizeUpBtn" class="btn ghost small" type="button" data-i18n-title="tip.sizeUp"><span class="a-lg">A</span><b>+</b></button></span>
+      </div>
+    </div>
+
+    <div id="breakOverlay" class="overlay" hidden>
+      <div class="overlay-card">
+        <div class="break-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" class="track"/><circle id="breakArc" cx="50" cy="50" r="44" class="arc"/></svg><span id="breakCount">20</span></div>
+        <h3 data-i18n="break.title"></h3>
+        <p data-i18n="break.body"></p>
+        <button id="breakResume" class="btn primary" type="button" data-i18n="break.resume"></button>
+      </div>
+    </div>
+
+    <div id="finishOverlay" class="overlay" hidden>
+      <div class="overlay-card">
+        <div class="fin-mark">✓</div>
+        <h3 data-i18n="fin.title"></h3>
+        <div class="fin-stats">
+          <div><strong id="finWords">0</strong><span data-i18n="fin.words"></span></div>
+          <div><strong id="finTime">0</strong><span data-i18n="fin.time"></span></div>
+          <div><strong id="finWpm">0</strong><span data-i18n="fin.wpm"></span></div>
+        </div>
+        <div class="row-btns">
+          <button id="finAgain" class="btn" type="button"><svg class="ic"><use href="#i-restart"/></svg><span data-i18n="fin.again"></span></button>
+          <button id="finLibrary" class="btn primary" type="button"><svg class="ic"><use href="#i-book"/></svg><span data-i18n="fin.library"></span></button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS SHEET -->
+  <div id="sheetScrim" class="scrim" hidden></div>
+  <aside id="settingsSheet" class="sheet" hidden aria-labelledby="setTitle">
+    <div class="sheet-grip" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="setTitle" data-i18n="set.title">Cilësimet</h2>
+      <button id="closeSheetBtn" class="btn ghost small icon-only" type="button" data-i18n-title="btn.close"><svg class="ic"><use href="#i-x"/></svg></button>
+    </div>
+    <div class="sheet-body">
+      <section class="set-group">
+        <h3 data-i18n="set.speed">Shpejtësia</h3>
+        <div class="range-row">
+          <input id="wpmRange" type="range" min="100" max="1000" step="10" value="300" aria-label="WPM">
+          <output id="wpmOut" class="range-out">300</output>
+        </div>
+        <div class="seg" id="wpmPresets">
+          <button type="button" data-wpm="200">200</button><button type="button" data-wpm="250">250</button><button type="button" data-wpm="300">300</button><button type="button" data-wpm="400">400</button><button type="button" data-wpm="500">500</button><button type="button" data-wpm="650">650</button>
+        </div>
+        <h4 data-i18n="set.chunk">Sa fjalë njëherësh</h4>
+        <div class="seg" id="chunkSeg">
+          <button type="button" data-chunk="1" data-i18n="set.chunk1"></button><button type="button" data-chunk="2" data-i18n="set.chunk2"></button><button type="button" data-chunk="3" data-i18n="set.chunk3"></button>
+        </div>
+        <h4 data-i18n="set.mode">Mënyra</h4>
+        <div class="seg" id="modeSeg">
+          <button type="button" data-mode="rsvp"><svg class="ic"><use href="#i-words"/></svg><span data-i18n="set.modeRsvp"></span></button><button type="button" data-mode="pacer"><svg class="ic"><use href="#i-page"/></svg><span data-i18n="set.modePacer"></span></button><button type="button" data-mode="book"><svg class="ic"><use href="#i-book"/></svg><span data-i18n="set.modeBook"></span></button>
+        </div>
+      </section>
+
+      <section class="set-group">
+        <h3 data-i18n="set.pacing">Ritmi i zgjuar</h3>
+        <label class="switch"><input type="checkbox" data-set="smart"><span data-i18n="set.smart"></span></label>
+        <label class="switch"><input type="checkbox" data-set="ramp"><span data-i18n="set.ramp"></span></label>
+        <label class="switch"><input type="checkbox" data-set="rewind"><span data-i18n="set.rewind"></span></label>
+      </section>
+
+        <section class="set-group">
+          <h3 data-i18n="set.books"></h3>
+          <label class="switch"><input type="checkbox" data-set="tts"><span data-i18n="set.tts"></span></label>
+          <label class="field"><span data-i18n="set.voice"></span>
+            <select id="voiceSel" data-set="ttsVoice"><option value="" data-i18n="set.voiceAuto"></option></select></label>
+          <label class="switch"><input type="checkbox" data-set="chapStop"><span data-i18n="set.chapStop"></span></label>
+          <label class="switch"><input type="checkbox" data-set="clean"><span data-i18n="set.clean"></span></label>
+        </section>
+
+      <section class="set-group">
+        <h3 data-i18n="set.display">Pamja</h3>
+        <label class="field"><span data-i18n="set.size"></span>
+          <span class="range-row"><input id="sizeRange" type="range" min="28" max="120" step="2"><output id="sizeOut" class="range-out">64</output></span></label>
+        <label class="field"><span data-i18n="set.pageSize"></span>
+          <span class="range-row"><input id="pageSizeRange" type="range" min="15" max="32" step="1"><output id="pageSizeOut" class="range-out">20</output></span></label>
+        <label class="field"><span data-i18n="set.font"></span>
+          <select id="fontSel" data-set="font">
+            <option value="sans" data-i18n="set.fontSans"></option>
+            <option value="hyper" data-i18n="set.fontHyper"></option>
+            <option value="serif" data-i18n="set.fontSerif"></option>
+            <option value="lora">Lora</option>
+            <option value="garamond">EB Garamond</option>
+            <option value="merri">Merriweather</option>
+            <option value="sserif">Source Serif</option>
+            <option value="inter">Inter</option>
+            <option value="nunito">Nunito</option>
+            <option value="dys" data-i18n="set.fontDys"></option>
+          </select></label>
+        <div class="field inline ink-field"><span data-i18n="set.ink"></span>
+          <div class="swatches ink-swatches" id="inkSwatches">
+            <button type="button" data-ink="auto" class="ink-auto" data-i18n-title="set.inkAuto"></button>
+            <button type="button" data-ink="cream" style="--c:#efe4cc" aria-label="cream"></button>
+            <button type="button" data-ink="amber" style="--c:#e9b872" aria-label="amber"></button>
+            <button type="button" data-ink="rose" style="--c:#eaa7b2" aria-label="rose"></button>
+            <button type="button" data-ink="sage" style="--c:#a9c99b" aria-label="sage"></button>
+            <button type="button" data-ink="sky" style="--c:#9cc3f0" aria-label="sky"></button>
+            <button type="button" data-ink="lilac" style="--c:#c4b3f2" aria-label="lilac"></button>
+            <button type="button" data-ink="gray" style="--c:#a3a3aa" aria-label="gray"></button>
+            <button type="button" data-ink="sepia" style="--c:#5b4636" aria-label="sepia"></button>
+            <button type="button" data-ink="navy" style="--c:#24365c" aria-label="navy"></button>
+          </div>
+        </div>
+        <label class="field"><span data-i18n="set.inkAlpha"></span>
+          <span class="range-row"><input id="inkAlphaRange" type="range" min="30" max="100" step="5"><output id="inkAlphaOut" class="range-out">100%</output></span></label>
+        <label class="field"><span data-i18n="set.spacing"></span>
+          <select data-set="spacing">
+            <option value="normal" data-i18n="set.spNormal"></option>
+            <option value="wide" data-i18n="set.spWide"></option>
+            <option value="wider" data-i18n="set.spWider"></option>
+          </select></label>
+        <label class="switch"><input type="checkbox" data-set="orp"><span data-i18n="set.orp"></span></label>
+        <div class="field inline"><span data-i18n="set.focusColor"></span>
+          <div class="swatches" id="focusSwatches">
+            <button type="button" data-color="red" style="--c:#ff3b30" aria-label="red"></button>
+            <button type="button" data-color="orange" style="--c:#ff8a00" aria-label="orange"></button>
+            <button type="button" data-color="green" style="--c:#1fa35c" aria-label="green"></button>
+            <button type="button" data-color="blue" style="--c:#2f6bff" aria-label="blue"></button>
+            <button type="button" data-color="violet" style="--c:#8b5cf6" aria-label="violet"></button>
+          </div>
+        </div>
+        <label class="switch"><input type="checkbox" data-set="bionic"><span data-i18n="set.bionic"></span></label>
+        <label class="switch"><input type="checkbox" data-set="ghost"><span data-i18n="set.ghost"></span></label>
+        <label class="switch"><input type="checkbox" data-set="trail"><span data-i18n="set.trail"></span></label>
+        <label class="switch"><input type="checkbox" data-set="guide"><span data-i18n="set.guide"></span></label>
+      </section>
+
+      <section class="set-group">
+        <h3 data-i18n="set.comfort">Rehati</h3>
+        <h4 data-i18n="set.theme">Tema</h4>
+        <div class="themes" id="themeGrid">
+          <button type="button" data-theme-opt="auto"><i class="tp auto"></i><span data-i18n="theme.auto"></span></button>
+          <button type="button" data-theme-opt="light"><i class="tp light"></i><span data-i18n="theme.light"></span></button>
+          <button type="button" data-theme-opt="paper"><i class="tp paper"></i><span data-i18n="theme.paper"></span></button>
+          <button type="button" data-theme-opt="sepia"><i class="tp sepia"></i><span data-i18n="theme.sepia"></span></button>
+          <button type="button" data-theme-opt="dark"><i class="tp dark"></i><span data-i18n="theme.dark"></span></button>
+          <button type="button" data-theme-opt="oled"><i class="tp oled"></i><span data-i18n="theme.oled"></span></button>
+          <button type="button" data-theme-opt="night"><i class="tp night"></i><span data-i18n="theme.night"></span></button>
+        </div>
+        <label class="field"><span data-i18n="set.break"></span>
+          <select data-set="breakMin" data-num>
+            <option value="0" data-i18n="set.breakOff"></option>
+            <option value="10"></option><option value="20"></option><option value="30"></option>
+          </select></label>
+        <label class="field"><span data-i18n="set.goal"></span>
+          <select data-set="goalMin" data-num>
+            <option value="5">5 min</option><option value="10">10 min</option><option value="15">15 min</option><option value="20">20 min</option><option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option>
+          </select></label>
+        <label class="field"><span data-i18n="set.lang"></span>
+          <select data-set="lang"><option value="sq">Shqip</option><option value="en">English</option></select></label>
+      </section>
+
+      <section class="set-group">
+        <h3 data-i18n="set.data">Të dhënat</h3>
+        <p class="muted small" data-i18n="set.dataNote"></p>
+        <button id="resetBtn" class="btn ghost small" type="button" data-i18n="set.reset"></button>
+      </section>
+    </div>
+  </aside>
+
+  <dialog id="noteDialog" class="dialog note-dialog">
+    <div class="dialog-head"><h2 data-i18n="note.title"></h2><button class="btn ghost small icon-only" type="button" data-close data-i18n-title="btn.close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <blockquote id="noteQuote" class="note-quote"></blockquote>
+    <textarea id="noteText" class="note-text" rows="4"></textarea>
+    <div class="note-actions"><button class="btn ghost small" type="button" data-close data-i18n="note.cancel"></button><button id="noteSave" class="btn primary small" type="button" data-i18n="note.save"></button></div>
+  </dialog>
+
+  <dialog id="tocDialog" class="dialog toc-dialog">
+    <div class="dialog-head"><div class="tabs" role="tablist"><button type="button" class="tab on" role="tab" data-tab="toc" data-i18n="toc.title"></button><button type="button" class="tab" role="tab" data-tab="marks"><span data-i18n="marks.title"></span><span id="marksCount" class="count"></span></button></div><button class="btn ghost small icon-only" type="button" data-close data-i18n-title="btn.close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <ol id="tocList" class="toc-list"></ol>
+    <div id="marksPane" hidden><ol id="marksList" class="marks-list"></ol><div id="marksTools" class="marks-tools"><button id="marksCopy" class="btn small" type="button"><svg class="ic"><use href="#i-copy"/></svg><span data-i18n="marks.copy"></span></button><button id="marksExport" class="btn primary small" type="button"><svg class="ic"><use href="#i-download"/></svg><span data-i18n="marks.export"></span></button></div></div>
+  </dialog>
+
+  <dialog id="helpDialog" class="dialog">
+    <div class="dialog-head"><h2 data-i18n="help.title"></h2><button class="btn ghost small icon-only" type="button" data-close data-i18n-title="btn.close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <dl class="keys">
+      <dt><kbd>Space</kbd></dt><dd data-i18n="help.space"></dd>
+      <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd data-i18n="help.arrows"></dd>
+      <dt><kbd>Shift</kbd>+<kbd>←</kbd> <kbd>→</kbd></dt><dd data-i18n="help.shiftArrows"></dd>
+      <dt><kbd>↑</kbd> <kbd>↓</kbd></dt><dd data-i18n="help.updown"></dd>
+      <dt><kbd>C</kbd></dt><dd data-i18n="help.toc"></dd>
+      <dt><kbd>N</kbd> <kbd>P</kbd></dt><dd data-i18n="help.chapters"></dd>
+      <dt><kbd>H</kbd></dt><dd data-i18n="help.mark"></dd>
+      <dt><kbd>K</kbd></dt><dd data-i18n="help.bm"></dd>
+      <dt><kbd>V</kbd></dt><dd data-i18n="help.tts"></dd>
+      <dt><kbd>[</kbd> <kbd>]</kbd></dt><dd data-i18n="help.brackets"></dd>
+      <dt><kbd>M</kbd></dt><dd data-i18n="help.m"></dd>
+      <dt><kbd>B</kbd></dt><dd data-i18n="help.b"></dd>
+      <dt><kbd>G</kbd></dt><dd data-i18n="help.g"></dd>
+      <dt><kbd>F</kbd></dt><dd data-i18n="help.f"></dd>
+      <dt><kbd>R</kbd></dt><dd data-i18n="help.r"></dd>
+      <dt><kbd>Esc</kbd></dt><dd data-i18n="help.esc"></dd>
+    </dl>
+    <p class="muted small" data-i18n="help.touch"></p>
+  </dialog>
+
+  <dialog id="syncDialog" class="dialog sync-dialog">
+    <div class="dialog-head"><h2 data-i18n="sync.title"></h2><button class="btn ghost small icon-only" type="button" data-close data-i18n-title="btn.close"><svg class="ic"><use href="#i-x"/></svg></button></div>
+    <div id="syncBody"></div>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+
+  <script type="module" src="/js/app.js"></script>
+</body>
+</html>

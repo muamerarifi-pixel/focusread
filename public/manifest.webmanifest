@@ -1,0 +1,44 @@
+{
+  "id": "/",
+  "name": "FocusRead — Lexim i fokusuar",
+  "short_name": "FocusRead",
+  "description": "Lexues i shpejtë dhe i qetë: fjalë pas fjale me ritëm të zgjuar, bibliotekë, PDF/EPUB/DOCX. 100% offline.",
+  "lang": "sq",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "background_color": "#0e0e10",
+  "theme_color": "#141416",
+  "categories": ["productivity", "education", "books"],
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Lexo tekst të ri", "short_name": "Lexo", "url": "/?source=shortcut", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  },
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "text/plain": [".txt", ".text"],
+        "text/markdown": [".md", ".markdown"],
+        "text/html": [".html", ".htm"],
+        "application/pdf": [".pdf"],
+        "application/epub+zip": [".epub"],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"]
+      }
+    }
+  ],
+  "launch_handler": { "client_mode": "focus-existing" }
+}

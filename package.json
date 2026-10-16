@@ -1,0 +1,16 @@
+{
+  "name": "focusread",
+  "private": true,
+  "type": "module",
+  "description": "FocusRead — offline speed-reading PWA with encrypted cross-device sync",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  }
+}
