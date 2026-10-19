@@ -1,6 +1,7 @@
 // FocusRead v6.7 — add-on layer (loaded by boot.js, like spotlight.js).
 //  • Home page: real book covers (from EPUB files) and nicer generated covers
-//  • Settings: "shadow behind text" switch
+//  • Settings: "shadow behind text" slider (0-100 %)
+//  • Reader: a bookmark ribbon on the page
 //  • Table of contents: reading time per section, collapsible groups in long books
 // It only observes and decorates the page; the reading engine in app.js is unchanged.
 import * as DB from './db.js';
@@ -31,6 +32,7 @@ function decorateCards() {
     const title = ((card.querySelector('.doc-title') || {}).textContent || inf.title || '').trim();
     cov.classList.add('cv');
     cov.dataset.p = String(hash(title) % 5);
+    if (inf.bm) { const r = document.createElement('s'); r.className = 'cv-bm'; r.title = L('Faqe e ruajtur', 'Saved page'); cov.appendChild(r); }
     if (inf.cover) {
       const img = document.createElement('img');
       img.alt = ''; img.decoding = 'async'; img.draggable = false;
@@ -52,28 +54,65 @@ function initCovers(tries = 0) {
   decorateCards();
 }
 
-/* ---------- Settings: shadow behind the reading text ---------- */
+/* ---------- Settings: shadow behind the reading text, 0-100 % ---------- */
 function initShadow() {
   const anchor = $('input[data-set="guide"]') || $('input[data-set="bionic"]');
   const row = (anchor && anchor.closest('label')) || [...document.querySelectorAll('label.switch')].pop();
-  if (!row || $('#shadowSwitch')) return;
-  const lab = document.createElement('label');
-  lab.className = 'switch'; lab.id = 'shadowSwitch';
-  const inp = document.createElement('input');
-  inp.type = 'checkbox'; inp.id = 'shadowToggle';
-  const span = document.createElement('span');
-  lab.append(inp, span);
-  const label = () => { span.textContent = L('Hije prapa tekstit', 'Shadow behind text'); };
+  if (!row || $('#shadowRow')) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'shadow-row'; wrap.id = 'shadowRow';
+  const title = document.createElement('span'); title.className = 'sr-t';
+  const out = document.createElement('output'); out.className = 'sr-o';
+  const rng = document.createElement('input');
+  rng.type = 'range'; rng.className = 'sr-r'; rng.min = '0'; rng.max = '100'; rng.step = '5';
+  wrap.append(title, out, rng);
+  const label = () => { title.textContent = L('Hije prapa tekstit', 'Shadow behind text'); };
   label();
-  inp.checked = document.documentElement.dataset.shadow !== 'off';
-  inp.addEventListener('change', () => {
-    document.documentElement.dataset.shadow = inp.checked ? 'on' : 'off';
-    try { localStorage.setItem('focusread_shadow', inp.checked ? '1' : '0'); } catch {}
-  });
-  row.insertAdjacentElement('afterend', lab);
+  const apply = v => {
+    v = Math.max(0, Math.min(100, Math.round(v)));
+    const h = document.documentElement;
+    h.dataset.shadow = v ? 'on' : 'off';
+    h.style.setProperty('--tsa', String(v / 100));
+    out.textContent = v + '%'; rng.value = String(v);
+  };
+  let cur = 50;
+  try { const sv = localStorage.getItem('focusread_shadow'); if (sv !== null && sv !== '') cur = Number(sv); } catch {}
+  apply(isFinite(cur) ? cur : 50);
+  rng.addEventListener('input', () => { apply(Number(rng.value)); try { localStorage.setItem('focusread_shadow', rng.value); } catch {} });
+  row.insertAdjacentElement('afterend', wrap);
   const later = () => setTimeout(label, 80);
   const lb = $('#langBtn'); if (lb) lb.addEventListener('click', later);
   const ls = $('select[data-set="lang"]'); if (ls) ls.addEventListener('change', later);
+}
+
+/* ---------- Reader: a visible bookmark ribbon on the page ---------- */
+// Tap the ribbon to save the page you are on (the same bookmark as the bookmark button, key K);
+// it turns solid red while this page is saved. It sits on the book page and on the guided page.
+function makeRibbon() {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'page-ribbon'; b.tabIndex = -1;
+  b.addEventListener('mousedown', e => e.preventDefault());
+  ['pointerdown', 'pointerup', 'click'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation()));
+  b.addEventListener('click', () => { const t = $('#bmBtn'); if (t) t.click(); });
+  return b;
+}
+function initRibbon() {
+  const bm = $('#bmBtn'), sheet = $('#bookSheet'), pacer = $('#pacer');
+  if (!bm || (!sheet && !pacer)) return;
+  const ribs = [];
+  if (sheet) { const r = makeRibbon(); sheet.appendChild(r); ribs.push(r); }
+  if (pacer) {
+    const w = document.createElement('div'); w.className = 'rib-wrap';
+    const r = makeRibbon(); w.appendChild(r); ribs.push(r);
+    pacer.insertBefore(w, pacer.firstChild);
+  }
+  const sync = () => {
+    const on = bm.classList.contains('on');
+    const tip = on ? L('Hiq faqeshënuesin', 'Remove bookmark') : L('Ruaj këtë faqe', 'Save this page');
+    ribs.forEach(r => { r.classList.toggle('on', on); r.title = tip; r.setAttribute('aria-label', tip); r.setAttribute('aria-pressed', on ? 'true' : 'false'); });
+  };
+  new MutationObserver(sync).observe(bm, { attributes: true, attributeFilter: ['class'] });
+  sync();
 }
 
 /* ---------- Table of contents: time per section, collapsible groups ---------- */
@@ -127,5 +166,5 @@ function initToc() {
   new MutationObserver(() => { try { decorateToc(); } catch (e) { console.warn('toc', e); } }).observe(list, { childList: true });
 }
 
-function init() { for (const f of [initCovers, initShadow, initToc]) { try { f(); } catch (e) { console.warn('extras', e); } } }
+function init() { for (const f of [initCovers, initShadow, initRibbon, initToc]) { try { f(); } catch (e) { console.warn('extras', e); } } }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

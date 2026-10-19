@@ -9,12 +9,12 @@ const mem = { meta: new Map(), texts: new Map() };
 // attached to the book's metadata when the book is saved (or, when the same file is imported again,
 // to the book that is already in the library). `info` feeds the cards on the home page.
 const pendingCovers = new Map(); // text hash -> thumbnail (data URL)
-const info = new Map();          // doc id -> { cover, author, kind, title }
+const info = new Map();          // doc id -> { cover, author, kind, title, bm (number of saved pages) }
 // the same hash app.js uses to recognise a text it already has
 export function docHash(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return (h >>> 0).toString(36) + ':' + str.length; }
 export function stashCover(text, url) { if (url && text) pendingCovers.set(docHash(text), url); }
 export const infoOf = id => info.get(id);
-const note = m => { if (m && m.id) info.set(m.id, { cover: m.cover || '', author: m.author || '', kind: m.kind || '', title: m.title || '' }); };
+const note = m => { if (m && m.id) info.set(m.id, { cover: m.cover || '', author: m.author || '', kind: m.kind || '', title: m.title || '', bm: Array.isArray(m.marks) ? m.marks.filter(x => x && x.kind === 'b').length : 0 }); };
 function adopt(m) {
   if (!m || m.cover || !m.hash || !pendingCovers.has(m.hash)) return false;
   m.cover = pendingCovers.get(m.hash);

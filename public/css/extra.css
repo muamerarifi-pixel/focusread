@@ -3,10 +3,28 @@
 /* ===== No hyphens at the end of lines ===== */
 .book-cols,.pacer-page,.book-cols *,.pacer-page *{-webkit-hyphens:none!important;-ms-hyphens:none!important;hyphens:none!important;overflow-wrap:break-word;word-break:normal}
 
-/* ===== Shadow behind the reading text (Settings, on by default) ===== */
+/* ===== Shadow behind the reading text (Settings, 0-100 %, 50 by default) ===== */
 html[data-shadow="on"] .word-row,
 html[data-shadow="on"] .pacer-page,
-html[data-shadow="on"] .book-cols{text-shadow:0 1px 1.5px rgba(0,0,0,.22),0 3px 10px rgba(0,0,0,.12)}
+html[data-shadow="on"] .book-cols{text-shadow:
+  0 1px calc(1px + 1.5px * var(--tsa,.5)) rgb(0 0 0 / calc(.5 * var(--tsa,.5))),
+  0 calc(1px + 3px * var(--tsa,.5)) calc(4px + 10px * var(--tsa,.5)) rgb(0 0 0 / calc(.3 * var(--tsa,.5)))}
+.shadow-row{display:grid;grid-template-columns:1fr auto;gap:8px 12px;align-items:center;padding:12px 2px}
+.shadow-row .sr-o{font-variant-numeric:tabular-nums;opacity:.7}
+.shadow-row .sr-r{grid-column:1/-1;width:100%}
+
+/* ===== Page bookmark ribbon (reader) and saved-page mark on covers ===== */
+.page-ribbon{position:absolute;top:-3px;right:26px;z-index:7;width:26px;height:50px;border:0;padding:0;background:none;color:#d4443a;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.page-ribbon::before{content:"";position:absolute;inset:0;background:currentColor;opacity:.22;clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%);transition:opacity .2s}
+.page-ribbon::after{content:"";position:absolute;inset:-6px -8px}
+.page-ribbon:hover::before{opacity:.5}
+.page-ribbon.on{filter:drop-shadow(0 2px 2px rgba(0,0,0,.35));animation:ribDrop .35s cubic-bezier(.2,.9,.3,1.2)}
+.page-ribbon.on::before{opacity:1}
+@keyframes ribDrop{from{transform:translateY(-14px)}to{transform:none}}
+.rib-wrap{position:sticky;top:0;height:0;z-index:7;pointer-events:none}
+.rib-wrap .page-ribbon{pointer-events:auto;right:20px}
+.cv-bm{position:absolute;z-index:4;top:-1px;right:9px;width:11px;height:20px;background:#e5483b;text-decoration:none;clip-path:polygon(0 0,100% 0,100% 100%,50% 76%,0 100%)}
+.cv-bm~.cv-k{top:auto;bottom:5px}
 
 /* ===== Home page: book covers ===== */
 /* (only cards the add-on has decorated) */
