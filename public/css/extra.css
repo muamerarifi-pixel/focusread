@@ -1,0 +1,62 @@
+/* FocusRead v6.7 - add-on styles (loaded by js/boot.js, after styles.css) */
+
+/* ===== No hyphens at the end of lines ===== */
+.book-cols,.pacer-page,.book-cols *,.pacer-page *{-webkit-hyphens:none!important;-ms-hyphens:none!important;hyphens:none!important;overflow-wrap:break-word;word-break:normal}
+
+/* ===== Shadow behind the reading text (Settings, on by default) ===== */
+html[data-shadow="on"] .word-row,
+html[data-shadow="on"] .pacer-page,
+html[data-shadow="on"] .book-cols{text-shadow:0 1px 1.5px rgba(0,0,0,.22),0 3px 10px rgba(0,0,0,.12)}
+
+/* ===== Home page: book covers ===== */
+/* (only cards the add-on has decorated) */
+.doc:has(.doc-cover.cv){grid-template-columns:68px minmax(0,1fr);column-gap:14px}
+/* a book cover, generated or real */
+.doc .doc-cover.cv{
+  --c1:oklch(.74 .12 var(--h,250));--c2:oklch(.52 .14 calc(var(--h,250) + 28));
+  position:relative;overflow:hidden;width:68px;height:100px;border-radius:3px 8px 8px 3px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  padding:12px 7px 12px 13px;text-align:center;color:#fff;cursor:pointer;
+  background:linear-gradient(155deg,var(--c1),var(--c2));
+  box-shadow:0 1px 1px rgba(0,0,0,.14),0 10px 18px -10px oklch(.32 .12 var(--h,250)),inset 0 0 0 1px rgba(255,255,255,.1)}
+/* spine and a soft sheen */
+
+.doc .doc-cover.cv::before{content:"";position:absolute;inset:0 auto 0 0;width:9px;z-index:2;pointer-events:none;
+  background:linear-gradient(90deg,rgba(0,0,0,.3),rgba(0,0,0,.08) 55%,rgba(255,255,255,.24) 72%,rgba(255,255,255,0))}
+.doc .doc-cover.cv::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(120deg,rgba(255,255,255,.2),rgba(255,255,255,0) 40%)}
+/* five patterns, picked from the title */
+.doc .doc-cover.cv[data-p="1"]{background:repeating-linear-gradient(135deg,rgba(255,255,255,.09) 0 5px,transparent 5px 10px),linear-gradient(155deg,var(--c1),var(--c2))}
+.doc .doc-cover.cv[data-p="2"]{background:radial-gradient(circle at 2px 2px,rgba(255,255,255,.2) 1.2px,transparent 1.8px) 0 0/10px 10px,linear-gradient(155deg,var(--c1),var(--c2))}
+.doc .doc-cover.cv[data-p="3"]{background:radial-gradient(120% 70% at 50% 108%,rgba(255,255,255,.22) 0 42%,transparent 43%),linear-gradient(155deg,var(--c1),var(--c2))}
+.doc .doc-cover.cv[data-p="4"]{background:linear-gradient(180deg,transparent 0 64%,rgba(0,0,0,.16) 64% 66%,transparent 66% 69%,rgba(0,0,0,.12) 69% 70%,transparent 70%),linear-gradient(155deg,var(--c1),var(--c2))}
+/* the first letter becomes a large, faint watermark; the title is printed on the cover */
+.doc .doc-cover.cv span{position:absolute;right:-8px;bottom:-16px;font-size:76px;line-height:1;font-weight:700;opacity:.13;color:#fff;transform:none;pointer-events:none;font-family:var(--display,Georgia,"Times New Roman",serif)}
+.doc .doc-cover.cv i{z-index:3;width:3px}
+.cv-t{position:relative;z-index:1;font-family:var(--display,Georgia,"Times New Roman",serif);font-weight:700;font-size:10px;line-height:1.18;letter-spacing:.01em;
+  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+.cv-t::before{content:"";display:block;width:16px;height:2px;margin:0 auto 6px;border-radius:2px;background:#fff;opacity:.6}
+.cv-a{position:relative;z-index:1;font-style:normal;font-size:6.8px;line-height:1.2;letter-spacing:.14em;text-transform:uppercase;opacity:.85;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cv-k{position:absolute;z-index:3;top:5px;right:4px;font-size:6.2px;line-height:1;font-weight:700;letter-spacing:.08em;text-decoration:none;color:rgba(255,255,255,.92);background:rgba(0,0,0,.28);padding:2px 3px;border-radius:3px}
+/* a real cover image (EPUB) */
+.doc .doc-cover.cv.has-img{display:block;padding:0;background:#2a2a2e}
+.doc-cover.has-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.doc-cover.has-img span,.doc-cover.has-img .cv-t,.doc-cover.has-img .cv-a,.doc-cover.has-img .cv-k{display:none}
+@media (max-width:520px){
+  .doc:has(.doc-cover.cv){grid-template-columns:62px minmax(0,1fr);column-gap:12px}
+  .doc .doc-cover.cv{width:62px;height:92px;padding:11px 6px 11px 12px}
+  .cv-t{font-size:9.2px}
+}
+
+/* ===== Table of contents: time per section, collapsible groups ===== */
+.toc-list .tm{flex:none;font-size:11.5px;color:var(--muted,#8a8a8f);font-variant-numeric:tabular-nums;white-space:nowrap}
+.toc-list .p{min-width:3.2ch;text-align:right}
+.toc-list li.l1.has-kids{display:flex;align-items:stretch}
+.toc-list li.l1.has-kids>button:first-child{flex:1;min-width:0}
+.toc-list .tg{flex:none;width:40px;border:0;background:none;color:inherit;opacity:.6;border-radius:10px;cursor:pointer;display:grid;place-items:center}
+.toc-list .tg:hover,.toc-list .tg:focus-visible{opacity:1;background:var(--soft,rgba(127,127,127,.14))}
+.toc-list .tg::before{content:"";width:7px;height:7px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg) translate(-2px,-2px);transition:transform .18s}
+.toc-list li.closed .tg::before{transform:rotate(-45deg)}
+.toc-list li.l1+li.l1{margin-top:2px}
+.toc-sum{list-style:none;font-size:12px;color:var(--muted,#8a8a8f);padding:2px 10px 8px}

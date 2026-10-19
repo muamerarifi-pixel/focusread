@@ -5,6 +5,23 @@ const DB_VER = 1;
 let dbp = null;
 const mem = { meta: new Map(), texts: new Map() };
 
+// Book covers (v6.7). importers.js hands over a thumbnail together with the text it belongs to; it is
+// attached to the book's metadata when the book is saved (or, when the same file is imported again,
+// to the book that is already in the library). `info` feeds the cards on the home page.
+const pendingCovers = new Map(); // text hash -> thumbnail (data URL)
+const info = new Map();          // doc id -> { cover, author, kind, title }
+// the same hash app.js uses to recognise a text it already has
+export function docHash(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return (h >>> 0).toString(36) + ':' + str.length; }
+export function stashCover(text, url) { if (url && text) pendingCovers.set(docHash(text), url); }
+export const infoOf = id => info.get(id);
+const note = m => { if (m && m.id) info.set(m.id, { cover: m.cover || '', author: m.author || '', kind: m.kind || '', title: m.title || '' }); };
+function adopt(m) {
+  if (!m || m.cover || !m.hash || !pendingCovers.has(m.hash)) return false;
+  m.cover = pendingCovers.get(m.hash);
+  pendingCovers.delete(m.hash);
+  return true;
+}
+
 function open() {
   if (dbp) return dbp;
   dbp = new Promise((resolve) => {
@@ -39,6 +56,10 @@ export const uid = () => Date.now().toString(36) + Math.random().toString(36).sl
 export async function listDocs() {
   const r = await run('meta', 'readonly', s => s.getAll());
   const list = r.mem ? [...mem.meta.values()] : (r.value || []);
+  for (const d of list) {
+    if (adopt(d)) { d.updatedAt = Date.now(); await putMeta(d); } // the same book imported again: it gets its cover now
+    note(d);
+  }
   return list.sort((a, b) => (b.openedAt || b.createdAt) - (a.openedAt || a.createdAt));
 }
 export async function getMeta(id) {
@@ -46,6 +67,8 @@ export async function getMeta(id) {
   return r.mem ? mem.meta.get(id) : r.value;
 }
 export async function putMeta(meta) {
+  adopt(meta);
+  note(meta);
   const r = await run('meta', 'readwrite', s => s.put(meta));
   if (r.mem) mem.meta.set(meta.id, meta);
 }
@@ -58,6 +81,7 @@ export async function putText(id, text) {
   if (r.mem) mem.texts.set(id, text);
 }
 export async function deleteDoc(id) {
+  info.delete(id);
   const r = await run('meta', 'readwrite', s => s.delete(id));
   if (r.mem) { mem.meta.delete(id); mem.texts.delete(id); return; }
   await run('texts', 'readwrite', s => s.delete(id));

@@ -1,5 +1,6 @@
 // Text processing: normalisation, tokenisation, chunking, ORP, timing.
 import { analyze } from './structure.js';
+import { prepare, withSections } from './aitext.js';
 
 export const F_SENT = 1;   // ends a sentence
 export const F_CLAUSE = 2; // ends a clause (, ; : —)
@@ -11,14 +12,20 @@ const SENT_END = /[.!?…‽]["'”’»)\]]*$/u;
 const CLAUSE_END = /[,;:—–]["'”’»)\]]*$/u;
 const ABBREV = /^(p\.sh|etj|dr|mr|mrs|ms|prof|st|nr|fig|vol|e\.g|i\.e|vs|etc|z|znj|zj|sh\.a|p\.k)\.$/i;
 
-export function normalize(text) {
-  return String(text || '')
+/**
+ * Basic clean-up. By default the text is also "prepared" (see aitext.js): markdown marks from AI chats are
+ * turned into headings and paragraphs, hyphenated line ends are joined, walls of text are split.
+ * { plain: true } skips that (used for EPUB / PDF / DOCX, whose importers already structure the text).
+ */
+export function normalize(text, opts) {
+  const t = String(text || '')
     .replace(/\r\n?/g, '\n')
-    .replace(/­/g, '')          // soft hyphens
-    .replace(/[   ]/g, ' ')
-    .replace(/[​-‍﻿]/g, '')
+    .replace(/\u00ad/g, '')          // soft hyphens
+    .replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g, ' ')
+    .replace(/[\u200b-\u200d\ufeff]/g, '')
     .replace(/[ \t]+\n/g, '\n')
     .trim();
+  return opts && opts.plain ? t : prepare(t);
 }
 
 export function countWords(text) {
@@ -29,7 +36,9 @@ export function countWords(text) {
 
 /** Split into original words (whitespace-delimited) + paragraph ends. */
 function splitWords(text) {
-  const { paras, heads } = analyze(normalize(text));
+  const an = analyze(normalize(text));
+  const paras = an.paras;
+  const heads = withSections(paras, an.heads);   // + automatic parts in long stretches without headings
   const words = [], paraEnd = [], wl = [], pStart = [];
   for (const p of paras) {
     pStart.push(words.length);
@@ -39,7 +48,7 @@ function splitWords(text) {
   pStart.push(words.length);
   return {
     words, paraEnd, wl,
-    heads: heads.map(h => ({ o: pStart[h.p], oEnd: pStart[h.pEnd + 1], level: h.level, title: h.title })),
+    heads: heads.map(h => ({ o: pStart[h.p], oEnd: pStart[h.pEnd + 1], level: h.level, title: h.title, syn: !!h.syn })),
   };
 }
 

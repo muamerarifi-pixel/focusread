@@ -1,6 +1,7 @@
 // Offline file importers: TXT, MD, HTML, PDF (pdf.js), EPUB & DOCX (JSZip).
 // Vendor libraries are loaded lazily from /vendor and precached by the service worker.
 import { stripMarkdown, normalize } from './text.js';
+import * as DB from './db.js';
 
 const loaded = {};
 function loadScript(src) {
@@ -45,10 +46,10 @@ export function detectKind(file) {
 async function readText(file) {
   const buf = await file.arrayBuffer();
   let s = new TextDecoder('utf-8').decode(buf);
-  if (s.includes('�')) {
-    try { const alt = new TextDecoder('windows-1250').decode(buf); if (!alt.includes('�')) s = alt; } catch {}
+  if (s.includes('\ufffd')) {
+    try { const alt = new TextDecoder('windows-1250').decode(buf); if (!alt.includes('\ufffd')) s = alt; } catch {}
   }
-  return s.replace(/^﻿/, '');
+  return s.replace(/^\ufeff/, '');
 }
 
 const BLOCKS = 'p,div,h1,h2,h3,h4,h5,h6,li,blockquote,pre,section,article,header,footer,tr,dt,dd,figcaption,aside,table,ul,ol,hr';
@@ -63,7 +64,7 @@ export function htmlToText(html) {
   body.querySelectorAll(BLOCKS).forEach(n => { n.before('\n\n'); n.append('\n\n'); });
   body.querySelectorAll('td,th').forEach(n => n.append(' '));
   const text = (body.textContent || '')
-    .replace(/[ \t ]+/g, ' ')
+    .replace(/[ \t\u00a0]+/g, ' ')
     .replace(/ *\n */g, '\n')
     .replace(/\n{3,}/g, '\n\n');
   return { title, text: text.trim() };
@@ -153,6 +154,78 @@ function resolvePath(base, href) {
   return parts.join('/');
 }
 
+/* ---------- EPUB cover (v6.7) ---------- */
+const COVER_W = 180, COVER_H = 270;
+function loadImage(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob), img = new Image();
+    const end = fn => () => { URL.revokeObjectURL(url); fn(); };
+    img.onload = end(() => resolve(img));
+    img.onerror = end(() => reject(new Error('image')));
+    img.src = url;
+  });
+}
+/** A small JPEG (data URL) of the cover image; '' when it can't be read. */
+async function thumbnail(blob) {
+  const img = await loadImage(blob);
+  const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
+  if (!(w0 >= 40 && h0 >= 40)) return '';
+  const k = Math.min(COVER_W / w0, COVER_H / h0, 1);
+  const w = Math.max(1, Math.round(w0 * k)), h = Math.max(1, Math.round(h0 * k));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
+  g.drawImage(img, 0, 0, w, h);
+  let q = 0.76, out = c.toDataURL('image/jpeg', q);
+  while (out.length > 42000 && q > 0.4) { q -= 0.12; out = c.toDataURL('image/jpeg', q); }
+  return out.length > 60000 ? '' : out;
+}
+const MIME = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', svg: 'image/svg+xml' };
+/** The cover of an EPUB: EPUB 3 "cover-image", EPUB 2 <meta name="cover">, <guide>, files called "cover", the first page. */
+async function epubCover(zip, opf, base) {
+  try {
+    const items = [...opf.querySelectorAll('manifest > item')].map(it => ({
+      id: it.getAttribute('id') || '', href: it.getAttribute('href') || '',
+      type: (it.getAttribute('media-type') || '').toLowerCase(), props: (it.getAttribute('properties') || '').split(/\s+/),
+    })).filter(it => it.href);
+    const isImg = it => it.type.startsWith('image/');
+    const byId = id => items.find(it => it.id === id);
+    const dirOf = p => (p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '');
+    const fromPage = async href => { // the image shown on a cover page
+      const path = resolvePath(base, href);
+      const str = await zip.file(path)?.async('string');
+      if (!str) return null;
+      const d = new DOMParser().parseFromString(str, 'text/html');
+      const src = d.querySelector('img')?.getAttribute('src') || d.querySelector('image')?.getAttribute('xlink:href') || d.querySelector('image')?.getAttribute('href');
+      return src ? { path: resolvePath(dirOf(path), src), type: '' } : null;
+    };
+    const cands = [];
+    const add = it => { if (it) cands.push({ path: resolvePath(base, it.href), type: it.type }); };
+    add(items.find(it => it.props.includes('cover-image') && isImg(it)));
+    const metaId = opf.querySelector('metadata meta[name="cover"]')?.getAttribute('content') || '';
+    const m = metaId ? byId(metaId) : null;
+    if (m && isImg(m)) add(m);
+    const guide = [...opf.querySelectorAll('guide > reference')].find(r => /^cover/i.test(r.getAttribute('type') || ''))?.getAttribute('href');
+    if (guide) { const p = await fromPage(guide); if (p) cands.push(p); }
+    add(items.find(it => isImg(it) && /cover/i.test(it.id)));
+    add(items.find(it => isImg(it) && /cover/i.test(it.href)));
+    if (m && !isImg(m)) { const p = await fromPage(m.href); if (p) cands.push(p); }
+    const first = byId(opf.querySelector('spine > itemref')?.getAttribute('idref') || '');
+    if (first && /html/.test(first.type)) { const p = await fromPage(first.href); if (p) cands.push(p); }
+    for (const c of cands.slice(0, 4)) {
+      const f = zip.file(c.path);
+      if (!f) continue;
+      const buf = await f.async('uint8array');
+      if (buf.length < 500 || buf.length > 15e6) continue;
+      const e = (c.path.match(/\.([a-z0-9]+)$/i) || [, ''])[1].toLowerCase();
+      const out = await thumbnail(new Blob([buf], { type: c.type.startsWith('image/') ? c.type : (MIME[e] || 'image/jpeg') }));
+      if (out) return out;
+    }
+  } catch { /* a missing or odd cover never blocks the import */ }
+  return '';
+}
+
 async function importEpub(file) {
   const JSZip = await getJSZip();
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
@@ -175,10 +248,11 @@ async function importEpub(file) {
     if (!href) continue;
     const f = zip.file(resolvePath(base, href));
     if (!f) continue;
-        const text = withChapterTitle(htmlToText(await f.async('string')).text, tocTitles[resolvePath(base, href)]);
+    const text = withChapterTitle(htmlToText(await f.async('string')).text, tocTitles[resolvePath(base, href)]);
     if (text) parts.push(text);
   }
-  return { title, author, text: parts.join('\n\n') };
+  const cover = await Promise.race([epubCover(zip, opf, base), new Promise(res => setTimeout(() => res(''), 8000))]);
+  return { title, author, text: parts.join('\n\n'), cover };
 }
 
 async function importDocx(file) {
@@ -385,7 +459,7 @@ async function sniffKind(file) {
   return null;
 }
 
-/** Import a File. Returns { title, text, kind } */
+/** Import a File. Returns { title, author, text, kind, cover } (cover = small JPEG data URL, EPUB only). */
 export async function importFile(file, onProgress) {
   let kind = detectKind(file);
   // trust the content over a missing or generic extension/type
@@ -406,7 +480,10 @@ export async function importFile(file, onProgress) {
     }
     else r = { title: '', text: raw };
   }
-  const text = normalize(r.text);
+  // EPUB, PDF and DOCX already come structured: keep their text exactly as before (so the same file is still recognised)
+  const text = normalize(r.text, kind === 'epub' || kind === 'pdf' || kind === 'docx' ? { plain: true } : undefined);
   if (!text || text.replace(/\s/g, '').length < 2) throw Object.assign(new Error('no text'), { code: 'notext' });
-  return { title: (r.title || baseName(file.name)).slice(0, 140), author: r.author || '', text, kind };
+  const cover = r.cover || '';
+  if (cover) DB.stashCover(text, cover);
+  return { title: (r.title || baseName(file.name)).slice(0, 140), author: r.author || '', text, kind, cover };
 }
