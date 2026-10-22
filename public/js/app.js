@@ -417,7 +417,7 @@ async function openReader(id, { resume = false } = {}) {
   closeSheet();
   if (!history.state || !history.state.reader) history.pushState({ reader: id }, '', '#read');
   R.docLang = '';
-  rebuild(meta.pos || 0);
+  rebuild(meta.spot ?? meta.pos ?? 0);
   offerStart(meta);
   // Coming back to a text: start from the beginning of the sentence you were in,
   // so you re-enter with context instead of mid-thought.
@@ -426,6 +426,12 @@ async function openReader(id, { resume = false } = {}) {
     const tk = curTok();
     R.ci = TX.chunkOfToken(R.starts, Math.max(TX.sentenceStart(R.T, tk), tk - 25));
     render();
+  }
+  // Back where you left: the ribbon on that page and a short glow over the sentence.
+  if (S.mode !== 'rsvp' && R.T) {
+    if (meta.spot == null && meta.pos > 0) meta.spot = meta.pos;
+    decorateSpot();
+    setTimeout(() => { const tk = spotTok(); if (tk != null && R.T) flashPick(sentenceRange(tk)[0]); }, 450);
   }
   if (resume) { $('#tapHint').textContent = ct('resumeHint'); return; }
   $('#tapHint').textContent = t('reader.tapHint');
@@ -459,7 +465,8 @@ function savePos(force) {
   const now = Date.now();
   if (!force && now - R.lastSave < 4000) return;
   R.lastSave = now;
-  const p = curOrig();
+  if (R.doc.spot != null) { const tk = spotTok(), pr = pageRange(); if (!pr || tk < pr[0] || tk > pr[1]) R.doc.spot = null; }
+  const p = R.doc.spot ?? curOrig();
   if (p === R.doc.pos && !force) return;
   if (p !== R.doc.pos) { R.doc.pos = p; R.doc.posAt = now; }
   DB.putMeta(R.doc);
@@ -473,6 +480,7 @@ function render() {
   updateChapter();
   updateChapterLeft();
   updateBmUI();
+  decorateSpot();
   renderProgress();
   sizeLimits();
 }
@@ -981,8 +989,10 @@ function releaseBook(e, cancelled) {
   if (getSelection && String(getSelection()).length) return;
   if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
     if (picking) { pickAt(e.target); return; }
-    const r = sheetBox();
-    turnPage(q.x < r.left + r.width * (R.book && R.book.spread ? 0.5 : 0.3) ? -1 : 1);
+    const r = sheetBox(), rel = (q.x - r.left) / r.width, edge = R.book && R.book.spread ? 0.1 : 0.18;
+    const tok = wordTok(e.target);
+    if (tok != null && rel > edge && rel < 1 - edge) { setSpot(tok); return; }
+    turnPage(rel < (R.book && R.book.spread ? 0.5 : 0.3) ? -1 : 1);
   }
 }
 els.book.addEventListener('pointerup', e => releaseBook(e, false));
@@ -1214,7 +1224,7 @@ els.pacer.addEventListener('click', e => {
   if (picking) { pickAt(e.target); return; }
   if ((getSelection()?.toString() || '').length) return;
   const w = e.target.closest('w');
-  if (w) { jumpToToken(Number(w.dataset.i)); if (!R.playing) { R.started = true; R.pausedAt = 0; } }
+  if (w) { jumpToToken(Number(w.dataset.i)); setSpot(Number(w.dataset.i)); if (!R.playing) { R.started = true; R.pausedAt = 0; } }
   else togglePlay();
 });
 
@@ -1293,7 +1303,7 @@ window.addEventListener('keydown', e => {
       case 'KeyN': stepChapter(1); break;
       case 'KeyP': stepChapter(-1); break;
       case 'KeyH': addMark(); break;
-      case 'KeyK': toggleBookmark(); break;
+      case 'KeyK': break;
       case 'KeyV': toggleTts(); break;
   }
 });
@@ -1980,7 +1990,7 @@ $('#noteSave').addEventListener('click', () => {
 });
 $('#noteDialog').addEventListener('click', e => { if (e.target.closest('[data-close]') || e.target === e.currentTarget) e.currentTarget.close(); });
 function renderMarks() {
-  const list = $('#marksList'), ms = marksOf(), total = R.T?.origCount || 1;
+  const list = $('#marksList'), ms = marksOf().filter(m => m.kind !== 'b'), total = R.T?.origCount || 1;
   $('#marksCount').textContent = ms.length ? ' ' + ms.length : '';
   $('#marksTools').hidden = !ms.length;
   if (!ms.length) { list.innerHTML = `<li class="toc-empty">${TX.esc(t('marks.none'))}</li>`; return; }
@@ -2066,6 +2076,30 @@ function updateBmUI() {
   const on = !!bmHere();
   if (b.classList.contains('on') !== on) { b.classList.toggle('on', on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); }
 }
+// ---- Where I am: one tap on a sentence puts the ribbon there (book and guided page); coming back opens that sentence.
+function spotTok() { const o = R.doc && R.doc.spot; return o == null || !R.T ? null : TX.tokenOfOrig(R.T, o); }
+function setSpot(tok) {
+  if (!R.T || !R.doc || tok == null) return;
+  const [a] = sentenceRange(tok);
+  R.doc.spot = R.T.orig[a] ?? 0; R.doc.pos = R.doc.spot; R.doc.posAt = Date.now();
+  DB.putMeta(R.doc); Sync.schedule(1500);
+  decorateSpot(); flashPick(a);
+  try { navigator.vibrate && navigator.vibrate(8); } catch {}
+}
+function decorateSpot() {
+  document.querySelectorAll('w.spot').forEach(w => w.classList.remove('spot'));
+  let rib = document.getElementById('spotRibbon');
+  if (!rib) { rib = document.createElement('div'); rib.id = 'spotRibbon'; rib.className = 'spot-ribbon'; rib.setAttribute('aria-hidden', 'true'); }
+  const host = S.mode === 'book' ? els.bookSheet : S.mode === 'pacer' ? els.pacer : null;
+  const box = S.mode === 'book' ? els.bookCols : S.mode === 'pacer' ? els.page : null;
+  const tk = spotTok(), pr = pageRange();
+  const on = !!(host && box && tk != null && pr && tk >= pr[0] && tk <= pr[1]);
+  if (host && rib.parentNode !== host) host.appendChild(rib);
+  rib.hidden = !on;
+  if (!on) return;
+  const [a, b] = sentenceRange(tk);
+  for (let i = a; i <= b; i++) { const w = box.querySelector(`w[data-i="${i}"]`); if (w) w.classList.add('spot'); }
+}
 function toggleBookmark() {
   if (!R.T || !R.doc) return;
   const list = marksOf();
@@ -2097,7 +2131,7 @@ function renderNotesHome() {
   const sec = $('#notesHome');
   if (!sec) return;
   const all = [];
-  for (const d of libDocs || []) for (const m of d.marks || []) all.push({ d, m });
+  for (const d of libDocs || []) for (const m of d.marks || []) if (m.kind !== 'b') all.push({ d, m });
   sec.hidden = !all.length;
   const head = $('#nhFolderHead');
   if (!all.length) { nhFolder = null; head.hidden = true; return; }

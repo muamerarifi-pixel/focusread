@@ -147,24 +147,12 @@ function confetti(host) {
 }
 function cheer(icon, title, sub, big) {
   if (!cheerOn()) return;
-  const host = $('#readerView') || document.body;
-  if (!cheerEl || cheerEl.parentNode !== host) {
-    cheerEl = document.createElement('div');
-    cheerEl.className = 'cheer'; cheerEl.setAttribute('role', 'status');
-    host.appendChild(cheerEl);
-  }
-  cheerEl.innerHTML = '';
-  const i = document.createElement('b'), t = document.createElement('span'), sm = document.createElement('small');
-  i.textContent = icon; t.textContent = title; sm.textContent = sub || '';
-  cheerEl.append(i, t, sm);
-  cheerEl.classList.remove('show');
-  void cheerEl.offsetWidth;
-  cheerEl.classList.add('show');
-  cheerEl.classList.toggle('big', !!big);
-  clearTimeout(cheerTimer);
-  cheerTimer = setTimeout(() => { if (cheerEl) cheerEl.classList.remove('show'); }, big ? 3400 : 2400);
-  if (big) confetti(host);
-  try { if (navigator.vibrate) navigator.vibrate(big ? [30, 50, 30] : 18); } catch {}
+  const bar = document.querySelector('.fr-bar'), rv = document.querySelector('#readerView');
+  if (!bar || (rv && rv.hidden)) return;
+  const p = document.createElement('span');
+  p.className = 'fb-pop'; p.textContent = icon + ' ' + title;
+  bar.appendChild(p); setTimeout(() => p.remove(), 2300);
+  try { if (navigator.vibrate) navigator.vibrate(big ? [10, 40, 10] : 8); } catch {}
 }
 const DECILE = [
   ['\u{1F331}', 'Fillimi \u00ebsht\u00eb pjesa m\u00eb e v\u00ebshtir\u00eb \u2014 e kryen!', 'The hardest part is starting \u2014 done!'],

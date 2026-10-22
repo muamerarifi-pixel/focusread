@@ -223,7 +223,7 @@ function initPageBar() {
     bar.querySelector('.fb-info').textContent = `${st.pct}% · ~${fmtMin(left)} · ${L(`edhe ${toNext} deri në ${next}%`, `${toNext} to ${next}%`)}${today ? ` · ${L('sot', 'today')} ${today}` : ''}${streak >= 2 ? ` · 🔥${streak}` : ''}`;
     if (st.id !== last.id) {              // a book was just opened: show where you stopped
       last = { id: st.id, page: st.page }; session = 0;
-      if (st.pos > 0 && st.idx > 0) {
+      if (false) {
         const host = $('#book') && !$('#book').hidden ? $('#bookSheet') : $('#pacer') && !$('#pacer').hidden ? $('#pacer') : stage;
         host.appendChild(here);
         here.innerHTML = `<b>🔖 ${L('Këtu ndalove', 'You stopped here')}</b><small>${L('Faqja', 'Page')} ${st.page} · ${ago(st.posAt)}</small>`;
@@ -240,7 +240,7 @@ function initPageBar() {
         pop.className = 'fb-pop';
         const big = [5, 10, 20, 30, 50, 75, 100].includes(session);
         pop.textContent = big ? L(`🎉 ${session} faqe në këtë seancë!`, `🎉 ${session} pages this session!`) : (session % 3 === 0 ? ['+1 📖', '+1 ✨', '+1 💪', '+1 🔥'][session % 4] : '+1 📖');
-        if (big) { pop.classList.add('big'); haptic([12, 60, 12]); } else haptic(6);
+        haptic(big ? [10, 40, 10] : 6);
         bar.appendChild(pop); setTimeout(() => pop.remove(), big ? 2600 : 1300);
         bar.classList.remove('bump'); void bar.offsetWidth; bar.classList.add('bump');
       }

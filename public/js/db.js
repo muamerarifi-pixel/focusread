@@ -14,7 +14,7 @@ const info = new Map();          // doc id -> { cover, author, kind, title, bm (
 export function docHash(str) { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) | 0; return (h >>> 0).toString(36) + ':' + str.length; }
 export function stashCover(text, url) { if (url && text) pendingCovers.set(docHash(text), url); }
 export const infoOf = id => info.get(id);
-const note = m => { if (m && m.id) info.set(m.id, { cover: m.cover || '', author: m.author || '', kind: m.kind || '', title: m.title || '', bm: Array.isArray(m.marks) ? m.marks.filter(x => x && x.kind === 'b').length : 0, words: m.words || 0, pos: m.pos || 0, fin: !!m.finished }); };
+const note = m => { if (m && m.id) info.set(m.id, { cover: m.cover || '', author: m.author || '', kind: m.kind || '', title: m.title || '', bm: 0, words: m.words || 0, pos: m.pos || 0, fin: !!m.finished }); };
 function adopt(m) {
   if (!m || m.cover || !m.hash || !pendingCovers.has(m.hash)) return false;
   m.cover = pendingCovers.get(m.hash);

@@ -132,7 +132,7 @@ html[data-shadow="on"] .book-cols{text-shadow:
 .fr-here small{font-weight:500;opacity:.9;margin-top:3px}
 .fr-here.out{opacity:0;transform:translateY(-12px);pointer-events:none}
 /* the classic book */
-html[data-classic] .book-cols{font-family:"EB Garamond",var(--read-font),serif;text-align:justify;hyphens:auto;-webkit-hyphens:auto;line-height:1.55}
+html[data-classic] .book-cols{text-align:justify;hyphens:auto;-webkit-hyphens:auto;line-height:1.55}
 html[data-classic] .book-cols p{margin:0;text-indent:1.5em}
 html[data-classic] .book-cols :is(h1,h2,h3,h4,.ph)+p,html[data-classic] .book-cols p:first-child{text-indent:0}
 html[data-classic] .book-sheet{box-shadow:inset 18px 0 24px -22px rgba(0,0,0,.35),0 8px 30px -10px rgba(0,0,0,.25)}
@@ -145,4 +145,16 @@ html[data-classic] .book-run{font-family:"EB Garamond",serif;font-style:italic;t
   #homeView{padding-bottom:84px}
   .sheet{max-height:78dvh}
   .sheet-body{padding-bottom:calc(40px + var(--sab,0px))}
+}
+
+/* ---- v6.9: only the ribbon (where you are) and notes (saved sentences) ---- */
+#bmBtn,.page-ribbon,.rib-wrap,#nhFilter [data-f="b"]{display:none!important}
+.spot-ribbon{position:absolute;top:0;right:22px;z-index:5;width:22px;height:46px;background:#c8312b;box-shadow:0 3px 8px rgba(0,0,0,.25);clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%);pointer-events:none;animation:ribIn .35s ease}
+.spot-ribbon[hidden]{display:none}
+@keyframes ribIn{from{transform:translateY(-100%)}}
+.pacer{position:relative}
+w.spot{background:linear-gradient(transparent 62%,color-mix(in srgb,#c8312b 22%,transparent) 62%)}
+@media (max-width:760px){
+  .has-knob{flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center}
+  .range-row.has-knob{justify-content:center!important}
 }
