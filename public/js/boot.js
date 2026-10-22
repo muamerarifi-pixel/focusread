@@ -9,3 +9,6 @@ try { import('/js/spotlight.js'); } catch (e) {}
 try { var sv = localStorage.getItem('focusread_shadow'), sp = sv === null || sv === '' ? 50 : Math.max(0, Math.min(100, Number(sv) || 0)); document.documentElement.setAttribute('data-shadow', sp ? 'on' : 'off'); document.documentElement.style.setProperty('--tsa', String(sp / 100)); } catch (e) {}
 try { var xl = document.createElement('link'); xl.rel = 'stylesheet'; xl.href = '/css/extra.css'; document.head.appendChild(xl); } catch (e) {}
 try { import('/js/extras.js').catch(function () {}); } catch (e) {}
+// v6.8: knobs, dimming, full screen, sun theme, page bar, classic book (js/plus.js)
+try { if (localStorage.getItem('focusread_classic') !== '0') document.documentElement.setAttribute('data-classic', ''); } catch (e) {}
+try { import('/js/plus.js').catch(function () {}); } catch (e) {}

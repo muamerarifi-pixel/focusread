@@ -94,3 +94,55 @@ html[data-shadow="on"] .book-cols{text-shadow:
 .confetti i{position:absolute;width:8px;height:12px;border-radius:2px;opacity:0;animation:confetti 1.4s cubic-bezier(.15,.7,.3,1) forwards}
 @keyframes confetti{0%{opacity:1;transform:translate(0,0) rotate(0)}70%{opacity:1}100%{opacity:0;transform:translate(var(--x),calc(var(--y) + 120px)) rotate(var(--r))}}
 @media (prefers-reduced-motion:reduce){.cheer{transition:opacity .2s}}
+/* ---- v6.8: knobs, page bar, stopped-here ribbon, classic book, one hand ---- */
+.fr-src{position:absolute!important;left:0;top:0;width:1px!important;height:1px;opacity:0;pointer-events:none}
+.has-knob{position:relative;display:flex!important;align-items:center;justify-content:space-between;gap:12px;overflow:hidden}
+.has-knob .range-out,.has-knob .sr-o{display:none}
+.range-row.has-knob{justify-content:flex-end}
+.fr-row small{display:block;font-size:12px}
+.fr-knob{position:relative;flex:none;width:84px;height:84px;border-radius:50%;touch-action:none;cursor:grab;outline:none;-webkit-user-select:none;user-select:none;margin:4px 0;
+  background:radial-gradient(circle at 35% 28%,var(--card),var(--soft) 78%);box-shadow:0 2px 8px rgba(0,0,0,.14),inset 0 1px 0 rgba(255,255,255,.12)}
+.fr-knob svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(135deg)}
+.fr-knob circle{fill:none;stroke-width:6;stroke-linecap:round}
+.fr-knob .k-track{stroke:var(--border);stroke-dasharray:270 360}
+.fr-knob .k-fill{stroke:var(--focus,#ff3b30);stroke-dasharray:calc(var(--f,0) * 270) 360}
+.fr-knob .k-dial{position:absolute;inset:15px;border-radius:50%;background:var(--card);box-shadow:0 1px 4px rgba(0,0,0,.18);transform:rotate(calc(-135deg + var(--f,0) * 270deg))}
+.fr-knob .k-dial i{position:absolute;left:50%;top:4px;width:4px;height:10px;margin-left:-2px;border-radius:2px;background:var(--focus,#ff3b30)}
+.fr-knob .k-val{position:absolute;inset:0;display:grid;place-items:center;font:650 15px/1 Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;color:var(--fg);pointer-events:none}
+.fr-knob.turning{cursor:grabbing;transform:scale(1.05)}
+.fr-knob:focus-visible{box-shadow:0 0 0 3px var(--focus,#ff3b30)}
+#settingsSheet button:active,#settingsSheet .switch:active{transform:scale(.97)}
+/* the floating page bar */
+.fr-bar{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:6;display:flex;align-items:center;gap:8px;max-width:calc(100% - 20px);padding:6px 12px;border-radius:999px;
+  background:color-mix(in srgb,var(--bg2) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 4px 14px rgba(0,0,0,.14);border:1px solid var(--border);
+  font:500 12px/1.2 Inter,system-ui,sans-serif;color:var(--fg2);white-space:nowrap;pointer-events:none}
+.fr-bar .fb-pg{color:var(--fg)} .fr-bar .fb-pg b{font-weight:700}
+.fr-bar .fb-track{width:52px;height:5px;border-radius:3px;background:var(--border);overflow:hidden;flex:none}
+.fr-bar .fb-track i{display:block;height:100%;background:var(--focus,#ff3b30);border-radius:3px;transition:width .4s}
+.fr-bar .fb-info{overflow:hidden;text-overflow:ellipsis}
+.fr-bar.bump{animation:frBump .45s ease}
+@keyframes frBump{40%{transform:translateX(-50%) scale(1.07)}}
+.fb-pop{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);font:700 14px/1 Inter,system-ui,sans-serif;color:var(--focus,#ff3b30);animation:frPop 1.3s ease forwards;white-space:nowrap}
+.fb-pop.big{font-size:16px;padding:8px 14px;border-radius:999px;background:var(--card);box-shadow:0 6px 20px rgba(0,0,0,.2);color:var(--fg);animation-duration:2.6s}
+@keyframes frPop{0%{opacity:0;transform:translate(-50%,6px)}15%{opacity:1}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-26px)}}
+.reader.playing .fr-bar{opacity:.55}
+/* "you stopped here" */
+.fr-here{position:absolute;top:10px;right:18px;z-index:7;display:flex;flex-direction:column;align-items:center;padding:12px 12px 16px;border-radius:4px 4px 0 0;background:#c8312b;color:#fff;
+  font:600 12px/1.25 Inter,system-ui,sans-serif;text-align:center;max-width:120px;box-shadow:0 6px 16px rgba(0,0,0,.25);clip-path:polygon(0 0,100% 0,100% 100%,50% 86%,0 100%);transition:opacity .6s,transform .6s}
+.fr-here small{font-weight:500;opacity:.9;margin-top:3px}
+.fr-here.out{opacity:0;transform:translateY(-12px);pointer-events:none}
+/* the classic book */
+html[data-classic] .book-cols{font-family:"EB Garamond",var(--read-font),serif;text-align:justify;hyphens:auto;-webkit-hyphens:auto;line-height:1.55}
+html[data-classic] .book-cols p{margin:0;text-indent:1.5em}
+html[data-classic] .book-cols :is(h1,h2,h3,h4,.ph)+p,html[data-classic] .book-cols p:first-child{text-indent:0}
+html[data-classic] .book-sheet{box-shadow:inset 18px 0 24px -22px rgba(0,0,0,.35),0 8px 30px -10px rgba(0,0,0,.25)}
+html[data-classic] .book-foot{font-family:"EB Garamond",serif;font-size:14px}
+html[data-classic] .book-run{font-family:"EB Garamond",serif;font-style:italic;text-transform:none;letter-spacing:.04em;font-size:13px}
+/* one hand: the home buttons and the settings come down to the thumb */
+@media (max-width:760px) and (pointer:coarse){
+  .topbar .top-actions{position:fixed;z-index:25;right:12px;bottom:calc(14px + var(--sab,0px));gap:6px;padding:5px;border-radius:30px;background:color-mix(in srgb,var(--bg2) 86%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 6px 20px rgba(0,0,0,.18);border:1px solid var(--border)}
+  .topbar .top-actions .btn.icon-only{width:44px;height:44px}
+  #homeView{padding-bottom:84px}
+  .sheet{max-height:78dvh}
+  .sheet-body{padding-bottom:calc(40px + var(--sab,0px))}
+}

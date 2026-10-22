@@ -421,7 +421,8 @@ async function openReader(id, { resume = false } = {}) {
   offerStart(meta);
   // Coming back to a text: start from the beginning of the sentence you were in,
   // so you re-enter with context instead of mid-thought.
-  if (meta.pos > 0 && R.T) {
+  // Only in words mode: on a page (book, guided) you come back to the very page you left.
+  if (meta.pos > 0 && R.T && S.mode === 'rsvp') {
     const tk = curTok();
     R.ci = TX.chunkOfToken(R.starts, Math.max(TX.sentenceStart(R.T, tk), tk - 25));
     render();
@@ -1913,6 +1914,8 @@ const pickBox = () => (S.mode === 'book' ? els.bookCols : els.page);
 function startPick() {
   if (R.playing) pause();
   picking = true;
+  pickCount = 0;
+  const sp0 = $('#pickBar span'); if (sp0) sp0.textContent = t('pick.hint');
   els.reader.classList.add('picking');
   $('#markBtn').classList.add('on');
   $('#pickBar').hidden = false;
@@ -1939,10 +1942,17 @@ function showPick(tok, cls = 'pk') {
 /** Brief glow over a sentence that was just saved by a long press. */
 function flashPick(tok) { showPick(tok, 'pkf'); setTimeout(() => { if (pickShown.startsWith('pkf')) showPick(null); }, 650); }
 const wordTok = target => { const w = target && target.closest && target.closest('w[data-i]'); return w ? Number(w.dataset.i) : null; };
+// The star stays on: tap as many sentences as you like, then ✕ (or the star again) when done.
+let pickCount = 0;
 function pickAt(target) {
   const tok = wordTok(target);
-  endPick();
-  if (tok != null) markSentenceAt(tok);
+  if (tok == null) return;
+  markSentenceAt(tok);
+  flashPick(tok);
+  pickCount++;
+  const sp = $('#pickBar span');
+  if (sp) sp.textContent = t('pick.hint') + ' · ✓ ' + pickCount;
+  try { navigator.vibrate && navigator.vibrate(10); } catch {}
 }
 $('#pickCancel').addEventListener('click', e => { e.stopPropagation(); endPick(); });
 ['pointerdown', 'pointerup', 'click'].forEach(ev => $('#pickBar').addEventListener(ev, e => e.stopPropagation()));
