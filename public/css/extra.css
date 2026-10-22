@@ -158,3 +158,13 @@ w.spot{background:linear-gradient(transparent 62%,color-mix(in srgb,#c8312b 22%,
   .has-knob{flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center}
   .range-row.has-knob{justify-content:center!important}
 }
+
+/* ---- v6.9.2: the ribbon in every mode, a mode switch on the page bar ---- */
+.rsvp{position:relative}
+#sentenceTrail.spot mark,#sentenceTrail.spot{text-decoration:underline;text-decoration-color:color-mix(in srgb,#c8312b 60%,transparent);text-underline-offset:4px;text-decoration-thickness:2px}
+.fr-bar .fb-modes{display:flex;gap:2px;margin-left:4px;padding-left:6px;border-left:1px solid var(--border);pointer-events:auto;flex:none}
+.fr-bar .fb-modes button{display:grid;place-items:center;width:32px;height:28px;border-radius:999px;color:var(--fg2);transition:background .15s,color .15s,transform .12s}
+.fr-bar .fb-modes button .ic{width:17px;height:17px}
+.fr-bar .fb-modes button.on{background:color-mix(in srgb,var(--fg) 14%,transparent);color:var(--fg)}
+.fr-bar .fb-modes button:active{transform:scale(.92)}
+.fr-bar .fb-info{min-width:0}

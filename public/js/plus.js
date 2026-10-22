@@ -206,8 +206,20 @@ function initPageBar() {
   if (!stage || !reader) return;
   const bar = document.createElement('div');
   bar.className = 'fr-bar'; bar.setAttribute('aria-live', 'polite');
-  bar.innerHTML = '<span class="fb-pg"></span><span class="fb-track"><i></i></span><span class="fb-info"></span>';
+  bar.innerHTML = '<span class="fb-pg"></span><span class="fb-track"><i></i></span><span class="fb-info"></span>' +
+    '<span class="fb-modes" role="group">' + [['rsvp', 'i-words', 'Fjalë', 'Words'], ['pacer', 'i-page', 'Faqe', 'Page'], ['book', 'i-book', 'Libër', 'Book']]
+      .map(([m, ic, sq, e]) => `<button type="button" data-m="${m}" data-sq="${sq}" data-en="${e}" title="${L(sq, e)}" aria-label="${L(sq, e)}"><svg class="ic"><use href="#${ic}"/></svg></button>`).join('') + '</span>';
   stage.appendChild(bar);
+  // switch the reading mode with one tap, right by the thumb
+  const modes = bar.querySelector('.fb-modes');
+  ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown'].forEach(ev => modes.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+  modes.addEventListener('click', e => {
+    e.stopPropagation();
+    const b = e.target.closest('[data-m]'), cur = (window.FocusRead && window.FocusRead.S || {}).mode;
+    if (!b || b.dataset.m === cur) return;
+    const seg = $(`#modeSeg [data-mode="${b.dataset.m}"]`);
+    if (seg) { seg.click(); haptic(10); tick(); }
+  });
   const here = document.createElement('div');
   here.className = 'fr-here'; here.hidden = true;
   let last = { id: '', page: 0 }, hereFor = 0, session = 0;
@@ -220,6 +232,7 @@ function initPageBar() {
     try { today = Math.floor((ST.today().w || 0) / WPP); streak = ST.streak(); } catch {}
     const next = Math.min(100, Math.floor(st.pct / 10) * 10 + 10);
     const toNext = Math.max(1, Math.ceil((Math.ceil(next / 100 * st.total) - st.idx) / WPP));
+    modes.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
     bar.querySelector('.fb-pg').innerHTML = `${L('Faqja', 'Page')} <b>${st.page}</b> / ${st.pages}`;
     bar.querySelector('.fb-track i').style.width = st.pct + '%';
     bar.querySelector('.fb-info').textContent = `${st.pct}% · ~${fmtMin(left)} · ${L(`edhe ${toNext} deri në ${next}%`, `${toNext} to ${next}%`)}${today ? ` · ${L('sot', 'today')} ${today}` : ''}${streak >= 2 ? ` · 🔥${streak}` : ''}`;

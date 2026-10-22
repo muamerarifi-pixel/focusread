@@ -110,7 +110,7 @@ function setSetting(key, value) {
   if (!R.T) return;
   if (key === 'tts' || key === 'ttsVoice') { if (R.playing) { clearTimeout(R.timer); ttsStop(); schedule(); } return; }
   if (key === 'ink' || key === 'inkAlpha') return;
-  if (['chunk', 'splitLong', 'mode', 'clean'].includes(key)) rebuild();
+  if (['chunk', 'splitLong', 'mode', 'clean'].includes(key)) rebuild(key === 'mode' && R.doc && R.doc.spot != null ? R.doc.spot : undefined); // a new mode opens at the ribbon
   else render();
 }
 
@@ -467,7 +467,8 @@ function savePos(force) {
   if (!force && now - R.lastSave < 4000) return;
   R.lastSave = now;
   // Book mode: your place is the ribbon, set by a tap on a sentence — flipping pages does not move it.
-  if (S.mode !== 'book' && R.doc.spot != null) { const tk = spotTok(), pr = pageRange(); if (!pr || tk < pr[0] || tk > pr[1]) R.doc.spot = null; }
+  // Words and guided page read in order: the ribbon follows the sentence you are in.
+  if (S.mode !== 'book') R.doc.spot = R.T.orig[sentenceRange(curTok())[0]] ?? 0;
   const p = S.mode === 'book' ? (R.doc.spot ?? R.doc.pos ?? 0) : (R.doc.spot ?? curOrig());
   if (p === R.doc.pos && !force) return;
   if (p !== R.doc.pos) { R.doc.pos = p; R.doc.posAt = now; }
@@ -2104,9 +2105,16 @@ function decorateSpot() {
   document.querySelectorAll('w.spot').forEach(w => w.classList.remove('spot'));
   let rib = document.getElementById('spotRibbon');
   if (!rib) { rib = document.createElement('div'); rib.id = 'spotRibbon'; rib.className = 'spot-ribbon'; rib.setAttribute('aria-hidden', 'true'); }
-  const host = S.mode === 'book' ? els.bookSheet : S.mode === 'pacer' ? els.pacer : null;
+  const host = S.mode === 'book' ? els.bookSheet : S.mode === 'pacer' ? els.pacer : els.rsvp;
   const box = S.mode === 'book' ? els.bookCols : S.mode === 'pacer' ? els.page : null;
   const tk = spotTok(), pr = pageRange();
+  if (S.mode === 'rsvp') { // words: the ribbon and an underlined sentence when the sentence on screen is your saved one
+    const on = tk != null && sentenceRange(tk)[0] === sentenceRange(curTok())[0];
+    if (rib.parentNode !== host) host.appendChild(rib);
+    rib.hidden = !on; els.trail.classList.toggle('spot', on);
+    return;
+  }
+  els.trail.classList.remove('spot');
   const on = !!(host && box && tk != null && pr && tk >= pr[0] && tk <= pr[1]);
   if (host && rib.parentNode !== host) host.appendChild(rib);
   rib.hidden = !on;
