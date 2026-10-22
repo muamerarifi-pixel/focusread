@@ -407,6 +407,7 @@ async function openReader(id, { resume = false } = {}) {
   R.doc = meta; R.text = text; R.T = null;
   R.started = false; R.sessionWords = 0; R.sessionMs = 0; R.sinceBreakMs = 0; R.pausedAt = 0;
   meta.openedAt = Date.now();
+  R.spotAt = performance.now();
   if (meta.finished) { meta.pos = 0; meta.finished = false; meta.posAt = Date.now(); }
   saveMeta(meta);
   $('#readerTitle').textContent = meta.title;
@@ -465,8 +466,9 @@ function savePos(force) {
   const now = Date.now();
   if (!force && now - R.lastSave < 4000) return;
   R.lastSave = now;
-  if (R.doc.spot != null) { const tk = spotTok(), pr = pageRange(); if (!pr || tk < pr[0] || tk > pr[1]) R.doc.spot = null; }
-  const p = R.doc.spot ?? curOrig();
+  // Book mode: your place is the ribbon, set by a tap on a sentence — flipping pages does not move it.
+  if (S.mode !== 'book' && R.doc.spot != null) { const tk = spotTok(), pr = pageRange(); if (!pr || tk < pr[0] || tk > pr[1]) R.doc.spot = null; }
+  const p = S.mode === 'book' ? (R.doc.spot ?? R.doc.pos ?? 0) : (R.doc.spot ?? curOrig());
   if (p === R.doc.pos && !force) return;
   if (p !== R.doc.pos) { R.doc.pos = p; R.doc.posAt = now; }
   DB.putMeta(R.doc);
@@ -867,7 +869,7 @@ function beginTurn(dir) {
     st.parts = { leaf: st.leaf, shade: st.leaf.querySelector('.leaf-shade'), gloss: st.leaf.querySelector('.leaf-gloss'), cast };
     st.leaf.classList.add('turning');
   }
-  st.onCommit = () => { if (dir > 0) bookCount(old.fromTok, tg.tok); else B.turnAt = performance.now(); savePos(); };
+  st.onCommit = () => { B.turnAt = performance.now(); savePos(); }; // browsing pages: only a tap on a sentence counts as read
   st.onCancel = () => { B.wantLast = false; R.ci = old.ci; render(); };
   setTurn(st, 0);
   flip = st;
@@ -906,7 +908,7 @@ function turnPage(dir) {
   if (!R.T || !B || B.sec < 0) return;
   endFlip();
   if (!turnTarget(dir)) {
-    if (dir > 0) { bookCount(B.starts[B.page], R.T.tok.length); finish(); }
+    if (dir > 0) { spotCount(R.doc.spot ?? R.doc.pos ?? 0, R.T.origCount); finish(); }
     return;
   }
   const st = beginTurn(dir);
@@ -2081,10 +2083,22 @@ function spotTok() { const o = R.doc && R.doc.spot; return o == null || !R.T ? n
 function setSpot(tok) {
   if (!R.T || !R.doc || tok == null) return;
   const [a] = sentenceRange(tok);
+  const before = R.doc.spot ?? R.doc.pos ?? 0;
   R.doc.spot = R.T.orig[a] ?? 0; R.doc.pos = R.doc.spot; R.doc.posAt = Date.now();
+  if (S.mode === 'book') spotCount(before, R.doc.spot);
   DB.putMeta(R.doc); Sync.schedule(1500);
   decorateSpot(); flashPick(a);
   try { navigator.vibrate && navigator.vibrate(8); } catch {}
+}
+/** The words between the old ribbon and the new one count as read (unless it was a jump, not reading). */
+function spotCount(from, to) {
+  const now = performance.now(), words = Math.max(0, to - from);
+  const dt = Math.min(now - (R.spotAt || now), Math.max(4000, words * 600));
+  R.spotAt = now;
+  if (!words || dt < 800 || words / (dt / 60000) > 1200) return;
+  R.started = true;
+  R.sessionWords += words; R.sessionMs += dt; R.sinceBreakMs += dt;
+  ST.addReading(words, dt);
 }
 function decorateSpot() {
   document.querySelectorAll('w.spot').forEach(w => w.classList.remove('spot'));

@@ -173,7 +173,8 @@ function readerState() {
   const FR = window.FocusRead, R = FR && FR.R, T = R && R.T;
   if (!T || !R.doc || !R.starts || !T.orig || !T.origCount) return null;
   const c = Math.max(0, Math.min(R.ci | 0, R.starts.length - 2));
-  return { T, id: R.doc.id, idx: T.orig[R.starts[c]] || 0, total: T.origCount };
+  const book = FR.S && FR.S.mode === 'book'; // book mode: progress follows the ribbon, not the page on screen
+  return { T, id: R.doc.id, idx: book ? Math.max(0, Math.min(R.doc.spot ?? R.doc.pos ?? 0, T.origCount)) : (T.orig[R.starts[c]] || 0), total: T.origCount };
 }
 function onProgress(label) {
   const st = readerState();

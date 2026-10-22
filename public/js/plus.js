@@ -187,7 +187,9 @@ function state() {
   const FR = window.FocusRead, R = FR && FR.R, T = R && R.T;
   if (!T || !R.doc || !R.starts || !T.orig || !T.origCount) return null;
   const c = clamp(R.ci | 0, 0, R.starts.length - 2);
-  const idx = T.orig[R.starts[c]] || 0, total = T.origCount;
+  const S = FR.S || {};
+  // book mode: progress is where the ribbon is (a tapped sentence), not the page you are looking at
+  const idx = S.mode === 'book' ? clamp(R.doc.spot ?? R.doc.pos ?? 0, 0, T.origCount) : (T.orig[R.starts[c]] || 0), total = T.origCount;
   const pages = Math.max(1, Math.ceil(total / WPP)), page = Math.min(pages, Math.floor(idx / WPP) + 1);
   return { R, idx, total, pages, page, pct: idx >= total - 12 ? 100 : Math.min(99, Math.floor(idx / total * 100)), id: R.doc.id, pos: R.doc.pos, posAt: R.doc.posAt };
 }
@@ -234,12 +236,13 @@ function initPageBar() {
     }
     if (st.page !== last.page) {
       if (hereFor && st.page !== hereFor) { here.classList.add('out'); hereFor = 0; }
-      if (st.page === last.page + 1) {    // a page read: a small reward
-        session++;
+      if (st.page > last.page && st.page - last.page <= 60) {    // pages read: a small reward
+        const n = st.page - last.page, was = session;
+        session += n;
         const pop = document.createElement('span');
         pop.className = 'fb-pop';
-        const big = [5, 10, 20, 30, 50, 75, 100].includes(session);
-        pop.textContent = big ? L(`🎉 ${session} faqe në këtë seancë!`, `🎉 ${session} pages this session!`) : (session % 3 === 0 ? ['+1 📖', '+1 ✨', '+1 💪', '+1 🔥'][session % 4] : '+1 📖');
+        const big = [5, 10, 20, 30, 50, 75, 100].some(m => was < m && session >= m);
+        pop.textContent = big ? L(`🎉 ${session} faqe në këtë seancë!`, `🎉 ${session} pages this session!`) : `+${n} ${['📖', '✨', '💪', '🔥'][session % 4]}`;
         haptic(big ? [10, 40, 10] : 6);
         bar.appendChild(pop); setTimeout(() => pop.remove(), big ? 2600 : 1300);
         bar.classList.remove('bump'); void bar.offsetWidth; bar.classList.add('bump');
