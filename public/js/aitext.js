@@ -120,31 +120,37 @@ function convert(lines, kinds, info) {
   const sub = maxHead ? Math.min(6, maxHead + 1) : 2;   // bold lines become headings one level below the deepest real one
   const out = [];
   const gap = () => { if (out.length && out[out.length - 1] !== '') out.push(''); };
+  const mark = () => { if (brk && out.length && out[out.length - 1] && out[out.length - 1][0] !== '#') { out[out.length - 1] = '\u2042\u2060' + out[out.length - 1]; } brk = false; };
   const head = (lv, t) => {
     t = clean(t).replace(/[:：]+$/, '');
     if (!t || !/[\p{L}\p{N}]/u.test(t)) return;
-    gap(); out.push('#'.repeat(lv) + ' ' + t); out.push('');
+    gap(); out.push('#'.repeat(lv) + ' ' + t); out.push(''); brk = false;
   };
-  let fence = false, cont = false;
+  let fence = false, cont = false, item = false, brk = false;
+  // a line under a list item that carries on from it (indented, lower case, or the item isn't finished) is part of it
+  const goesOn = l => item && out.length && (/^[ \t]{2,}\S/.test(l) || /^\p{Ll}/u.test(l.trim()) || !/[.!?…:;"”»)\]]$/.test(out[out.length - 1]));
   for (let i = 0; i < n; i++) {
     const l = lines[i], k = kinds[i];
     if (strong && /^[ \t]*(?:```|~~~)/.test(l)) { fence = !fence; gap(); cont = false; continue; }
     if (fence) { if (l.trim()) { gap(); out.push(l.trim()); } continue; }
-    if (k === '' || k === 'r') { gap(); cont = false; continue; }
-    if (k === 'h') { const m = RE_HEAD.exec(l); head(m[1].length, m[2]); cont = false; continue; }
+    if (k === '' || k === 'r') { if (k === 'r' && out.length) brk = true; gap(); cont = false; item = false; continue; }
+    if (k === 'h') { const m = RE_HEAD.exec(l); head(m[1].length, m[2]); cont = false; item = false; continue; }
     if (k === 't' && strong) { i = table(lines, i, out, gap) - 1; gap(); cont = false; continue; }
     if ((k === 'b' || k === 'o') && (strong || tight[i] || (k === 'b' && RE_GLYPH.test(l)))) {
       const m = (k === 'b' ? RE_BULLET : RE_ORDERED).exec(l);
       const num = k === 'o' ? m[2] : '';
       let body = m[3].replace(/^\[[ xX]\][ \t]+/, '');
       const bb = strong ? RE_BOLD_LINE.exec(body) : null;
-      if (bb && !/[.!]$/.test(bb[1].trim())) { head(sub, (num ? num + '. ' : '') + bb[1]); cont = false; continue; }
+      if (bb && !/[.!]$/.test(bb[1].trim())) { head(sub, (num ? num + '. ' : '') + bb[1]); cont = false; item = false; continue; }
       body = clean(body);
       if (!body) continue;
-      gap(); out.push(num ? num + '. ' + body : body); cont = false;
+      // "\u2022\u2060" tells structure.js "bullet item" without adding a word
+      gap(); out.push(num ? num + '. ' + body : '\u2022\u2060' + body); mark(); cont = false; item = true;
       continue;
     }
-    if (!strong) { if (!cont) gap(); out.push(l); cont = true; continue; }
+    if (goesOn(l)) { const t2 = strong ? clean(l.trim().replace(/^(?:>[ \t]*)+/, '')) : l.trim(); if (t2) out[out.length - 1] += ' ' + t2; continue; }
+    item = false;
+    if (!strong) { if (!cont) gap(); out.push(l); if (!cont) mark(); cont = true; continue; }
     let t = l.trim().replace(/^(?:>[ \t]*)+/, '');
     if (RE_ART.test(t)) continue;
     const bb = RE_BOLD_LINE.exec(t);
@@ -154,7 +160,7 @@ function convert(lines, kinds, info) {
     const prev = out[out.length - 1];
     // a line that carries on from a long, unfinished line above is a wrapped line, not a new paragraph
     if (cont && prev && prev.length >= 60 && !/[.!?…:;"”»)\]]$/.test(prev) && /^\p{Ll}/u.test(t)) out[out.length - 1] = prev + ' ' + t;
-    else { gap(); out.push(t); }
+    else { gap(); out.push(t); mark(); }
     cont = true;
   }
   return out.join('\n').replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n');

@@ -190,3 +190,19 @@ w.spot{background:linear-gradient(transparent 62%,color-mix(in srgb,#c8312b 22%,
 /* ---- v6.9.7: narrow pages (phones) use natural word spacing — justified text without hyphens leaves big, uneven gaps there.
    Wide pages (tablet, desktop, two-page spread) keep the straight book edge. ---- */
 @media (max-width:760px){ .book-cols,html[data-classic] .book-cols,.reader.spread .book-cols{text-align:left;word-spacing:normal} }
+/* ---- v6.9.8: lists, separators and paragraphs in book and page modes ---- */
+html .reader .book-cols p+p{margin-top:.38em}
+html .reader :is(.book-cols,.pacer-page) p.li{position:relative;text-indent:0;padding-left:1.4em;margin:.28em 0 0}
+html .reader :is(.book-cols,.pacer-page) p.li::before{content:"•";position:absolute;left:.3em;top:0;font-weight:700;color:var(--muted)}
+html .reader :is(.book-cols,.pacer-page) p.li.ol{padding-left:1.8em;text-indent:-1.35em}
+html .reader :is(.book-cols,.pacer-page) p.li:is(.ol,.cont)::before{content:none}
+html .reader :is(.book-cols,.pacer-page) p.li.cont{text-indent:0}
+html .reader :is(.book-cols,.pacer-page) p:not(.li)+p.li,html .reader :is(.book-cols,.pacer-page) p.li+p:not(.li){margin-top:.75em}
+html .reader .pacer-page p.li{margin-bottom:0}
+html .reader .pacer-page p.li+p:not(.li){margin-top:1.1em}
+html .reader :is(.book-cols,.pacer-page) p.li+p.li{margin-top:.3em}
+html .reader :is(.book-cols,.pacer-page) p.li:first-child{margin-top:0}
+html .reader :is(.book-cols,.pacer-page) p.sep{text-align:center!important;text-indent:0;letter-spacing:.6em;color:var(--muted);margin:1em 0}
+html .reader :is(.book-cols,.pacer-page) p.brk{text-indent:0;margin-top:2.2em;position:relative}
+html .reader :is(.book-cols,.pacer-page) p.brk::after{content:"⁂";position:absolute;left:0;right:0;top:-1.75em;text-align:center;text-indent:0;color:var(--muted);font-size:.9em;letter-spacing:0}
+html .reader .book-cols .ph+p.li::first-letter{float:none;font-size:inherit;line-height:inherit;margin:0;font-weight:inherit;font-family:inherit;color:inherit;-webkit-initial-letter:normal;initial-letter:normal}

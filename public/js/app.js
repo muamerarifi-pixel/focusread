@@ -554,6 +554,14 @@ function renderTrail(s, e) {
   els.trail.innerHTML = html + post;
 }
 
+/** <p> for a paragraph starting at token i: list item, separator, section break, or plain. */
+function paraOpen(T, i) {
+  const f = T.flags[i];
+  let c = f & TX.F_LI ? 'li' : f & TX.F_LIN ? 'li ol' : f & TX.F_SEP ? 'sep' : '';
+  if (c && i > 0 && !(T.flags[i - 1] & TX.F_PARA)) c += ' cont'; // the rest of an item that began on the page before
+  if (f & TX.F_BRK) c += (c ? ' ' : '') + 'brk';
+  return c ? `<p class="${c}">` : '<p>';
+}
 function buildPages(T) {
   const pages = [0];
   let count = 0;
@@ -577,7 +585,7 @@ function renderPacer() {
     const open = i => {
       const lv = (T.flags[i] & TX.F_HEAD) ? (T.hlv[i] || 1) : 0;
       tag = lv ? 'h' + (lv + 1) : 'p';
-      return lv ? `<${tag} class="ph ph${lv}">` : '<p>';
+      return lv ? `<${tag} class="ph ph${lv}">` : paraOpen(T, i);
     };
     html += open(ps);
     for (let i = ps; i < pe; i++) {
@@ -632,7 +640,7 @@ function bookLayout(sec) {
   const open = i => {
     const lv = (T.flags[i] & TX.F_HEAD) ? (T.hlv[i] || 1) : 0;
     tag = lv ? 'h' + (lv + 1) : 'p';
-    return lv ? `<${tag} class="ph ph${lv}">` : '<p>';
+    return lv ? `<${tag} class="ph ph${lv}">` : paraOpen(T, i);
   };
   html += open(ps);
   for (let i = ps; i < pe; i++) {

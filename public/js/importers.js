@@ -60,6 +60,12 @@ export function htmlToText(html) {
   body.querySelectorAll('script,style,noscript,svg,math,template,iframe,object').forEach(n => n.remove());
   const title = (doc.querySelector('title')?.textContent || doc.querySelector('h1')?.textContent || '').trim();
   markHeadings(body);
+  body.querySelectorAll('li').forEach(li => {
+    if (!li.textContent.trim()) return;
+    const ol = li.parentElement && li.parentElement.localName === 'ol';
+    let k = 0; if (ol) { k = (parseInt(li.parentElement.getAttribute('start'), 10) || 1); for (let x = li.previousElementSibling; x; x = x.previousElementSibling) if (x.localName === 'li') k++; }
+    li.prepend(ol ? k + '. ' : '• ');
+  });
   body.querySelectorAll('br').forEach(n => n.replaceWith('\n'));
   body.querySelectorAll(BLOCKS).forEach(n => { n.before('\n\n'); n.append('\n\n'); });
   body.querySelectorAll('td,th').forEach(n => n.append(' '));
@@ -290,6 +296,28 @@ async function importDocx(file) {
     }
   }
 
+  // numbering.xml: list id + level -> 'bullet' | 'decimal' | 'lowerLetter' ...
+  const numFmt = {}, counters = {};
+  const numXml = await zip.file('word/numbering.xml')?.async('string');
+  if (numXml) {
+    const nd = parse(numXml), abs = {};
+    for (const a of nd.getElementsByTagNameNS('*', 'abstractNum')) {
+      const lv = abs[attr(a, 'abstractNumId')] = {};
+      for (const l of a.getElementsByTagNameNS('*', 'lvl')) lv[attr(l, 'ilvl')] = val(child(l, 'numFmt'));
+    }
+    for (const n of nd.getElementsByTagNameNS('*', 'num')) { const a = abs[val(child(n, 'abstractNumId'))]; if (a) numFmt[attr(n, 'numId')] = a; }
+  }
+  const listMark = pPr => {
+    const np = child(pPr, 'numPr'), id = val(child(np, 'numId'));
+    if (!np || !id || id === '0') return '';
+    const lv = +(val(child(np, 'ilvl')) || 0), f = (numFmt[id] || {})[lv] || 'bullet';
+    for (const k in counters) { const [i2, l2] = k.split(':'); if (i2 === id && +l2 > lv) delete counters[k]; }
+    if (f === 'bullet') return '• ';
+    if (f === 'none') return '';
+    const k = id + ':' + lv, c = counters[k] = (counters[k] || 0) + 1;
+    if (/letter/i.test(f)) { const ch = String.fromCharCode(97 + ((c - 1) % 26)); return (/upper/i.test(f) ? ch.toUpperCase() : ch) + ') '; }
+    return c + '. ';
+  };
   const doc = parse(docXml);
   const items = [];
   for (const p of doc.getElementsByTagNameNS('*', 'p')) {
@@ -315,6 +343,7 @@ async function importDocx(file) {
     if (ol !== '' && +ol < 9) rank = +ol + 1;
     if (rank === 'toc') continue; // Word's own TOC lines ("Chapter 1 ...... 12") are noise here
     if (rank !== null && s.length > 200) rank = null;
+    if (rank === null) s = listMark(pPr) + s;
     items.push({ s, rank });
   }
   const ranks = [...new Set(items.filter(i => i.rank !== null).map(i => i.rank))].sort((a, b) => a - b);
@@ -421,6 +450,11 @@ async function importPdf(file, onProgress) {
     if (l.length <= Math.min(70, median * 0.6) && l.split(' ').length <= 10 && !/[.,;:!?…"”»\-]$/.test(l)
         && /^[\p{Lu}\d]/u.test(l) && (!buf || /[.!?:…"”»]$/.test(buf)) && nx && /^[\p{Lu}"“«„'‘\d—–-]/u.test(nx)) {
       flush(); text += l + '\n\n'; continue;
+    }
+    if (/^(?:[•●○◦▪▫■□‣⁃∙►▸➤➢✓✔❖◆\uf0b7\uf0a7\uf076\uf0d8\uf0fc]|[-*+]\s|\d{1,3}[.)]\s|[a-z]\)\s)\s*\S/u.test(l)) {
+      flush(); buf = l;
+      if (/[.!?:…"”»]$/.test(l) && l.length < median * 0.72) flush();
+      continue;
     }
     if (buf.endsWith('-') && /^[\p{Ll}]/u.test(l)) buf = buf.slice(0, -1) + l;
     else buf += (buf ? ' ' : '') + l;

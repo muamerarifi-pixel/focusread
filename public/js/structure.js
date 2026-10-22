@@ -53,6 +53,17 @@ const END_P = /[.,;:…]$|["”»’)\]]$/;
 const OPENERS = /^[-–—•*·"“”«»'‘’„(\[<]/;
 
 const wordsOf = s => s.split(/\s+/).filter(Boolean);
+
+// Lists (v6.9.8): bullet glyphs from Word, PDFs, web pages and chat apps.
+const GLYPHS = '•●○◦▪▫■□‣⁃∙►▸▹➤➢➔→✓✔☐❖◆◇\uf0b7\uf0a7\uf076\uf0d8\uf0fc';
+const RE_GLYPH_W = new RegExp('^[' + GLYPHS + ']$', 'u');
+const RE_GLYPH_LINE = new RegExp('^[' + GLYPHS + ']\\s+\\S', 'u');
+const RE_ITEM_LINE = new RegExp('^(?:[' + GLYPHS + ']|[-*+])\\s+\\S|^(?:\\d{1,3}|[a-zA-Z])[.)]\\s+\\S|^\\((?:\\d{1,3}|[a-zA-Z])\\)\\s+\\S', 'u');
+const INLINE = '•●▪◦■►▸➤➢✓✔❖◆\uf0b7\uf0a7';
+const RE_INLINE = new RegExp('\\s+(?=[' + INLINE + ']\\s+\\S)', 'gu');
+const RE_INLINE_N = new RegExp('(?:^|\\s)[' + INLINE + '](?=\\s+\\S)', 'gu');
+const RE_DIALOG = /^[–—]\s*\S/u;
+const RE_NUM_W = /^(?:\d{1,3}|[a-zA-Z])[.)]$|^\((?:\d{1,3}|[a-zA-Z])\)$/;
 const letters = s => (s.match(/\p{L}/gu) || []).length;
 
 function isCaps(s) {
@@ -122,13 +133,30 @@ function rawParagraphs(text) {
     const p = parts[k] || '';
     const sep = parts[k + 1] || '';
     if (p.trim()) {
-      const lines = p.split('\n');
+      // "Intro: • one • two • three" (bullets glued into one line by a PDF) -> one line per item
+      let pb = (p.match(RE_INLINE_N) || []).length >= 2 ? p.replace(RE_INLINE, '\n') : p;
+      if (pb !== p) {
+        // the last glued item often carries the next paragraph with it: give that text back its own paragraph
+        const k2 = pb.lastIndexOf('\n'), last = pb.slice(k2 + 1);
+        const m = /[.!?…]["”»’)]*\s+(?=["“«„]?\p{Lu})/u.exec(last);
+        if (m && wordsOf(last.slice(m.index + m[0].length)).length >= 12) pb = pb.slice(0, k2 + 1) + last.slice(0, m.index + m[0].length).trimEnd() + '\n\u0001' + last.slice(m.index + m[0].length);
+      }
+      const lines = pb.split('\n');
+      const nItem = lines.filter(l => RE_ITEM_LINE.test(l.trim())).length;
+      const nDlg = lines.filter(l => RE_DIALOG.test(l.trim())).length;
       let cur = [], b = blank, peel = true, afterBare = false;
       const emit = (s, bl) => { s = s.trim(); if (s) out.push({ s, blank: bl }); };
       for (let li = 0; li < lines.length; li++) {
         const line = lines[li].trim();
         const last = li === lines.length - 1;
         let split = false;
+        if (line.charCodeAt(0) === 1) { if (cur.length) { emit(cur.join('\n'), b); b = 0; } cur = [line.slice(1)]; peel = false; continue; }
+        if (!RE_MARK.test(line) && (RE_GLYPH_LINE.test(line) || (nItem >= 2 && RE_ITEM_LINE.test(line)) || (nDlg >= 2 && RE_DIALOG.test(line)))) {
+          // a list item starts its own paragraph; the lines after it (wrapped text) stay with it
+          if (cur.length) { emit(cur.join('\n'), b); b = 0; cur = []; }
+          cur.push(line); peel = false; afterBare = false;
+          continue;
+        }
         if (RE_MARK.test(line)) split = true;
         else if (peel && !last) {
           if (li === 0 && strongFirstLine(line)) split = true;
@@ -168,10 +196,30 @@ export function analyze(text) {
     const s = mk ? mk[2].trim() : r.s;
     const ws = wordsOf(r.s);
     if (mk) ws.shift(); // drop the "#" marker word
-    return { s: s.replace(/\s+/g, ' '), words: ws, nw: ws.length, blank: r.blank, mark: mk ? mk[1].length : 0, level: 0, kind: '', bare: false };
+    // list items: 1 = bullet, 2 = numbered, 3 = separator ("* * *"), 4 = "-" bullet (needs a neighbour)
+    let li = 0, t = s, brk = 0;
+    if ((ws[0] || '').startsWith('\u2042\u2060')) { ws[0] = ws[0].slice(2); t = t.replace(/^\u2042\u2060/, ''); brk = 1; }
+    const w0 = ws[0] || '';
+    if (!mk) {
+      if (w0.startsWith('\u2022\u2060')) { ws[0] = w0.slice(2); t = t.replace(/^\u2022\u2060/, ''); li = 1; }   // item from aitext.js
+      else if (ws.length > 1 && RE_GLYPH_W.test(w0)) { ws[0] = '\u0000' + w0; li = 1; }                      // kept as a hidden word
+      else if (ws.length > 1 && /^[-*+]$/.test(w0)) li = 4;
+      else if (ws.length > 1 && RE_NUM_W.test(w0)) li = 2;
+      else if (ws.length <= 5 && !/[\p{L}\p{N}]/u.test(r.s)) li = 3;
+    }
+    return { s: t.replace(/\s+/g, ' '), words: ws, nw: ws.length, blank: r.blank, mark: mk ? mk[1].length : 0, level: 0, kind: '', bare: false, li, brk };
   }).filter(p => p.words.length);
   const n = P.length;
   const explicit = P.some(p => p.mark);
+  // "-" bullets and numbered items count as a list only when there are at least two in a row
+  for (let i = 0; i < n; i++) {
+    const p = P[i];
+    if (p.li !== 4 && p.li !== 2) continue;
+    const near = (P[i - 1] && P[i - 1].li === p.li) || (P[i + 1] && P[i + 1].li === p.li);
+    if (!near) p.li = 0;
+    else if (p.li === 4) { p.li = 1; p.words[0] = '\u0000' + p.words[0]; }
+  }
+  const noHead = p => p.li === 1 || p.li === 3;
 
   // 1) explicit markers (ranked so the biggest heading used becomes level 1)
   if (explicit) {
@@ -189,7 +237,7 @@ export function analyze(text) {
       if (ph && ph.bare) p.bare = true;
       continue;
     }
-    if (p.nw > 16) continue;
+    if (p.nw > 16 || noHead(p)) continue;
     const ph = patternHeading(p.s, explicit);
     if (!ph) continue;
     if (ph.digits && digitsAlone < 2) continue;
@@ -204,7 +252,7 @@ export function analyze(text) {
 
   // 3) shape (only when the source didn't mark headings itself)
   if (!explicit && n >= 3) {
-    const cand = P.map(p => (p.kind ? 0 : shapeLevel(p.s)));
+    const cand = P.map(p => (p.kind || noHead(p) ? 0 : shapeLevel(p.s)));
     const bodyish = q => q && !q.kind && q.nw >= 12;
     const endsSentence = q => !q || q.kind || /[.!?…:"”»’)\]]$/.test(q.s);
     const shaped = [];
@@ -259,5 +307,5 @@ export function analyze(text) {
     while (j + 1 < n && P[j + 1].cont) { j++; title += ': ' + P[j].s.replace(/[.:]$/, ''); }
     heads.push({ p: i, pEnd: j, level: p.level, title: clip(title) });
   }
-  return { paras: P.map(p => ({ words: p.words, level: p.kind ? p.level : 0 })), heads };
+  return { paras: P.map(p => ({ words: p.words, level: p.kind ? p.level : 0, li: p.kind ? 0 : p.li, brk: p.brk })), heads };
 }

@@ -5,7 +5,11 @@ import { prepare, withSections } from './aitext.js';
 export const F_SENT = 1;   // ends a sentence
 export const F_CLAUSE = 2; // ends a clause (, ; : —)
 export const F_PARA = 4;
-export const F_HEAD = 8;   // part of a heading (title, chapter, subheading)   // ends a paragraph
+export const F_HEAD = 8;   // part of a heading (title, chapter, subheading)
+export const F_LI = 16;    // in a bullet list item
+export const F_LIN = 32;   // in a numbered list item
+export const F_SEP = 64;   // a separator line ("* * *")
+export const F_BRK = 128;  // first word of a paragraph that follows a section break
 
 const LETTER = /[\p{L}\p{N}]/u;
 const SENT_END = /[.!?…‽]["'”’»)\]]*$/u;
@@ -39,15 +43,15 @@ function splitWords(text) {
   const an = analyze(normalize(text));
   const paras = an.paras;
   const heads = withSections(paras, an.heads);   // + automatic parts in long stretches without headings
-  const words = [], paraEnd = [], wl = [], pStart = [];
+  const words = [], paraEnd = [], wl = [], wli = [], pStart = [];
   for (const p of paras) {
     pStart.push(words.length);
     const ws = p.words;
-    for (let i = 0; i < ws.length; i++) { words.push(ws[i]); paraEnd.push(i === ws.length - 1); wl.push(p.level); }
+    for (let i = 0; i < ws.length; i++) { words.push(ws[i]); paraEnd.push(i === ws.length - 1); wl.push(p.level); wli.push((p.li || 0) | (p.brk && i === 0 ? 8 : 0)); }
   }
   pStart.push(words.length);
   return {
-    words, paraEnd, wl,
+    words, paraEnd, wl, wli,
     heads: heads.map(h => ({ o: pStart[h.p], oEnd: pStart[h.pEnd + 1], level: h.level, title: h.title, syn: !!h.syn })),
   };
 }
@@ -117,7 +121,8 @@ function cleanWords(ws) {
 }
 
 export function tokenize(text, { split = true, clean = false } = {}) {
-  const { words: origWords, paraEnd, wl, heads } = splitWords(text);
+  const { words: origWords, paraEnd, wl, wli, heads } = splitWords(text);
+  const LIF = [0, F_LI, F_LIN, F_SEP];
   let words = origWords;
   if (clean) {
     words = origWords.slice();
@@ -135,7 +140,7 @@ export function tokenize(text, { split = true, clean = false } = {}) {
     first[i] = tok.length;
     let f = 0;
     const punctOnly = w.startsWith('\u0000');
-    if (punctOnly) w = w.slice(1);
+    if (punctOnly) w = w.replace(/^\u0000+/, '');
     if (paraEnd[i]) f |= F_PARA | F_SENT;
     else if (w && SENT_END.test(w) && !ABBREV.test(w) && !/^\d+\.$/.test(w)) f |= F_SENT;
     else if (w && CLAUSE_END.test(w)) f |= F_CLAUSE;
@@ -148,7 +153,7 @@ export function tokenize(text, { split = true, clean = false } = {}) {
     const parts = split && !lv ? splitLongWord(w) : [w];
     for (let j = 0; j < parts.length; j++) {
       tok.push(parts[j]);
-      flags.push((j === parts.length - 1 ? f : 0) | (lv ? F_HEAD : 0));
+      flags.push((j === parts.length - 1 ? f : 0) | (lv ? F_HEAD : 0) | LIF[wli[i] & 7] | (wli[i] & 8 && j === 0 ? F_BRK : 0));
       orig.push(i);
       hlv.push(lv);
     }
@@ -156,7 +161,7 @@ export function tokenize(text, { split = true, clean = false } = {}) {
   first[words.length] = tok.length;
   if (!tok.length) { tok.push('…'); flags.push(F_PARA | F_SENT); orig.push(0); hlv.push(0); }
   const H = heads.map(h => ({ ...h, t: first[h.o], e: first[h.oEnd] })).filter(h => h.t < tok.length);
-  const shown = clean ? words.map(w => (w.startsWith('\u0000') ? w.slice(1) : w)) : origWords;
+  const shown = (clean ? words : origWords).map(w => (w.startsWith('\u0000') ? w.replace(/^\u0000+/, '') : w));
   return {
     tok, flags: Uint8Array.from(flags), orig: Int32Array.from(orig), origCount: origWords.length, words: shown,
     hlv: Uint8Array.from(hlv), heads: H, topLevel: H.length ? Math.min(...H.map(h => h.level)) : 1,
@@ -309,7 +314,9 @@ export function estimateMinutes(words, S) {
 }
 
 export function guessTitle(text, fallback) {
-  const first = normalize(text).split('\n').map(s => s.trim()).find(Boolean) || '';
+  let first = normalize(text).split('\n').map(s => s.trim()).find(Boolean) || '';
+  first = first.replace(/^[\u2022\u2042]\u2060/, '').split(/\s+[•●▪◦■►➤✓✔\uf0b7]\s/)[0].replace(/[\s:;,–—-]+$/, ''); // "Intro: • item…" -> "Intro"
+  if (/^[•●▪◦■►➤✓✔\uf0b7]\s/.test(first)) first = first.slice(2);
   if (first && first.length <= 80) return first.replace(/^#+\s*/, '');
   const w = first.split(/\s+/).slice(0, 7).join(' ');
   return w ? w + '…' : fallback;
