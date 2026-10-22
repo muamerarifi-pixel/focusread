@@ -22,15 +22,22 @@ export async function GET(request) {
   const q = new URL(request.url).searchParams;
   const id = q.get('id') || '', kind = q.get('t') || 'file';
   if (!ID.test(id) || !['file', 'doc', 'slides'].includes(kind)) return json(400, 'bad_link');
-  const src = source(id, kind);
-  let up;
-  try {
-    up = await fetch(src.url, { redirect: 'follow', headers: { 'user-agent': 'Mozilla/5.0 (FocusRead importer)', accept: '*/*' } });
-  } catch { return json(502, 'unreachable'); }
-  if (up.status === 404) return json(404, 'not_found');
-  const type = (up.headers.get('content-type') || '').toLowerCase();
-  // Google answers a private file (or a sign-in wall) with an HTML page instead of the file
-  if (!up.ok || type.startsWith('text/html')) return json(403, 'private');
+  // a "/file/d/…" link can also be a Google Doc or Slides: if the plain download fails, try those exports
+  const tries = kind === 'file' ? ['file', 'doc', 'slides'] : [kind];
+  let up = null, src = null, type = '', status = 403;
+  for (const k of tries) {
+    src = source(id, k);
+    try {
+      up = await fetch(src.url, { redirect: 'follow', headers: { 'user-agent': 'Mozilla/5.0 (FocusRead importer)', accept: '*/*' } });
+    } catch { up = null; status = 502; continue; }
+    type = (up.headers.get('content-type') || '').toLowerCase();
+    // Google answers a private file (or a sign-in wall) with an HTML page instead of the file
+    if (up.ok && !type.startsWith('text/html')) break;
+    if (status !== 404) status = up.status === 404 ? 404 : 403;
+    try { await up.body?.cancel(); } catch {}
+    up = null;
+  }
+  if (!up) return json(status, status === 404 ? 'not_found' : status === 502 ? 'unreachable' : 'private');
   const len = +up.headers.get('content-length') || 0;
   if (len > MAX) return json(413, 'too_big');
   const name = fileName(up.headers.get('content-disposition'), 'Google Drive' + src.ext);
