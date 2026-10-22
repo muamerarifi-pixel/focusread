@@ -86,7 +86,7 @@ function makeSwitch(id, sq, e, checked, onChange) {
 const relabel = () => { $$('[data-sq]').forEach(s => { s.textContent = L(s.dataset.sq, s.dataset.en); }); $$('[data-tsq]').forEach(b => { const v = L(b.dataset.tsq, b.dataset.ten); b.title = v; b.setAttribute('aria-label', v); }); };
 
 /* ---------- background dimming, day and night apart ---------- */
-const DIMV = ['--bg', '--bg2', '--card', '--soft', '--paper-tone'];
+const DIMV = ['--bg', '--bg2', '--card', '--soft']; // never touch --paper-tone: paper.js owns it, and --bg follows it
 const dimKey = () => (isNight() ? 'focusread_dim_n' : 'focusread_dim_d');
 function applyDim() {
   const h = document.documentElement;

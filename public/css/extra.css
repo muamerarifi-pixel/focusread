@@ -185,3 +185,5 @@ w.spot{background:linear-gradient(transparent 62%,color-mix(in srgb,#c8312b 22%,
 @media (min-width:900px){ .book{perspective:5200px} }
 .reader.spread .book{perspective:7200px}
 @media (min-width:1600px){ .reader.spread .book{perspective:9000px} }
+/* ---- v6.9.6: a page is always solid paper, even if a colour variable goes missing — the turning leaf must never be see-through ---- */
+.book-sheet{background-color:var(--bg,var(--paper-tone,#f7f6f2))}
