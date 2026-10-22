@@ -312,7 +312,7 @@ function initPageBar() {
   if (!stage || !reader) return;
   const bar = document.createElement('div');
   bar.className = 'fr-bar'; bar.setAttribute('aria-live', 'polite');
-  bar.innerHTML = '<span class="fb-pg"></span><span class="fb-track"><i></i></span><span class="fb-info"></span>' +
+  bar.innerHTML = '<span class="fb-pg"></span><span class="fb-track"><i></i></span>' +
     '<span class="fb-modes" role="group">' + [['rsvp', 'i-words', 'Fjalë', 'Words'], ['pacer', 'i-page', 'Faqe', 'Page'], ['book', 'i-book', 'Libër', 'Book']]
       .map(([m, ic, sq, e]) => `<button type="button" data-m="${m}" data-tsq="${sq}" data-ten="${e}" title="${L(sq, e)}" aria-label="${L(sq, e)}"><svg class="ic"><use href="#${ic}"/></svg></button>`).join('') + '</span>';
   stage.appendChild(bar);
@@ -340,8 +340,7 @@ function initPageBar() {
     const toNext = Math.max(1, Math.ceil((Math.ceil(next / 100 * st.total) - st.idx) / WPP));
     modes.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
     bar.querySelector('.fb-pg').innerHTML = `${L('Faqja', 'Page')} <b>${st.page}</b> / ${st.pages}`;
-    bar.querySelector('.fb-track i').style.width = st.pct + '%';
-    bar.querySelector('.fb-info').textContent = `${st.pct}% · ~${fmtMin(left)} · ${L(`edhe ${toNext} deri në ${next}%`, `${toNext} to ${next}%`)}${today ? ` · ${L('sot', 'today')} ${today}` : ''}${streak >= 2 ? ` · 🔥${streak}` : ''}`;
+    bar.querySelector('.fb-track i').style.width = st.pct + '%';  // (v7.1: only page, progress and modes here — the rest is already in the top bar)
     if (st.id !== last.id) {              // a book was just opened: show where you stopped
       last = { id: st.id, page: st.page }; session = 0;
       if (false) {

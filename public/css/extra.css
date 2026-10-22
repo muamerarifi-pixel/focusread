@@ -220,3 +220,5 @@ html .reader .book-cols .ph+p.li::first-letter{float:none;font-size:inherit;line
 .fr-dlg-act{display:flex;justify-content:flex-end;gap:8px;margin-top:10px}
 @keyframes frDlg{from{opacity:0}}
 @keyframes frSpin{to{transform:rotate(360deg)}}
+/* ---- v7.1: the floating bar keeps only page, progress and reading modes ---- */
+.fr-bar .fb-track{width:clamp(70px,22vw,140px)}
