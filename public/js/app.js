@@ -1887,10 +1887,15 @@ function saveMarkRange(oa, ob, { tok } = {}) {
   toast('★ ' + t('mark.saved'), { actions: [{ label: t('mark.undoSave'), fn: () => dropMark(m) }, { label: t('mark.addNote'), fn: () => editNote(m.id) }], duration: 6000 });
   return m;
 }
+// Sync (v7.2): a deleted note leaves a tombstone, so a copy on another device doesn't bring it back;
+// a note put back or edited gets a fresh stamp (u), which beats an older tombstone or an older copy.
+function markGone(m, d = R.doc) { if (d && m) (d.marksDel || (d.marksDel = {}))[m.id] = Date.now(); }
+function markBack(m) { if (m) m.u = Date.now(); }
 /** Remove a saved sentence from the open book without asking (used by "Undo"). */
 function dropMark(m) {
   const ms = marksOf(), i = ms.indexOf(m);
   if (i < 0) return -1;
+  markGone(m);
   ms.splice(i, 1);
   saveMeta(R.doc); buildMarks(); render();
   if ($('#tocDialog').open) renderMarks();
@@ -1904,6 +1909,7 @@ function unsaveMark(m) {
   toast(t('mark.removed'), { action: t('mark.undo'), duration: 7000, onAction: () => {
     const ms = marksOf();
     if (ms.includes(m)) return;
+    markBack(m);
     ms.splice(Math.min(i, ms.length), 0, m);
     ms.sort((x, y) => x.o - y.o);
     saveMeta(R.doc); buildMarks(); render();
@@ -1996,7 +2002,7 @@ function editNote(id, doc) {
 $('#noteSave').addEventListener('click', () => {
   const d = noteDoc || R.doc;
   const m = ((d && d.marks) || []).find(x => x.id === noteFor);
-  if (m) { m.note = $('#noteText').value.trim().slice(0, 4000); saveMeta(d); if ($('#tocDialog').open) renderMarks(); if (!R.doc) renderNotesHome(); }
+  if (m) { m.note = $('#noteText').value.trim().slice(0, 4000); markBack(m); saveMeta(d); if ($('#tocDialog').open) renderMarks(); if (!R.doc) renderNotesHome(); }
   $('#noteDialog').close();
 });
 $('#noteDialog').addEventListener('click', e => { if (e.target.closest('[data-close]') || e.target === e.currentTarget) e.currentTarget.close(); });
@@ -2019,9 +2025,10 @@ $('#marksList').addEventListener('click', e => {
   if (e.target.closest('.mk-edit')) { $('#tocDialog').close(); editNote(m.id); return; }
   if (e.target.closest('.mk-del')) {
     const i = ms.indexOf(m);
+    markGone(m);
     ms.splice(i, 1);
     saveMeta(R.doc); buildMarks(); render(); renderMarks();
-    toast(t('mark.deleted'), { action: t('mark.undo'), onAction: () => { ms.splice(i, 0, m); saveMeta(R.doc); buildMarks(); render(); if ($('#tocDialog').open) renderMarks(); } });
+    toast(t('mark.deleted'), { action: t('mark.undo'), onAction: () => { markBack(m); ms.splice(i, 0, m); saveMeta(R.doc); buildMarks(); render(); if ($('#tocDialog').open) renderMarks(); } });
     return;
   }
   $('#tocDialog').close();
@@ -2159,8 +2166,8 @@ function toggleBookmark() {
   const ex = bmHere();
   if (ex) {
     const i = list.indexOf(ex);
-    list.splice(i, 1); saveMeta(R.doc); render();
-    toast(t('bm.removed'), { action: t('mark.undo'), onAction: () => { list.splice(i, 0, ex); saveMeta(R.doc); render(); } });
+    markGone(ex); list.splice(i, 1); saveMeta(R.doc); render();
+    toast(t('bm.removed'), { action: t('mark.undo'), onAction: () => { markBack(ex); list.splice(i, 0, ex); saveMeta(R.doc); render(); } });
     return;
   }
   const page = pacerPage(), pr = pageRange();

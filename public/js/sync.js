@@ -137,13 +137,38 @@ export function disconnect() {
 
 /* ---------- the sync cycle ---------- */
 function sig(m) { return m.deleted ? 'x' + m.updatedAt : `${m.updatedAt || 0}|${m.posAt || 0}`; }
+// Saved sentences (notes) from both sides are kept: one list per id, the newer copy of each note wins,
+// and a note deleted on one device (tombstone in marksDel) stays deleted unless it was put back or edited later.
+const DEL_KEEP = 180 * 864e5;
+function mergeMarks(l, r, rNewer) {
+  const del = {};
+  for (const src of [l.marksDel, r.marksDel]) for (const [k, t] of Object.entries(src || {})) if (t > (del[k] || 0)) del[k] = t;
+  const stamp = x => x.u || x.at || 0;
+  const by = new Map();
+  for (const x of (rNewer ? l : r).marks || []) if (x && x.id) by.set(x.id, x);
+  for (const x of (rNewer ? r : l).marks || []) { if (!x || !x.id) continue; const o = by.get(x.id); if (!o || stamp(x) >= stamp(o)) by.set(x.id, x); }
+  const marks = [...by.values()].filter(x => !(del[x.id] > stamp(x))).sort((a, b) => (a.o - b.o) || (stamp(a) - stamp(b)));
+  const old = Date.now() - DEL_KEEP;
+  for (const k of Object.keys(del)) if (del[k] < old) delete del[k];
+  return { marks, del };
+}
+const marksKey = m => JSON.stringify((m.marks || []).map(x => [x.id, x.u || x.at || 0, x.note || '']));
 function merge(l, r) {
   const newer = (r.updatedAt || 0) > (l.updatedAt || 0);
   const m = newer ? { ...l, ...r } : { ...r, ...l };
+  // the reading place: ribbon (spot), position and "finished" all come from whichever side moved last
   const posSrc = (r.posAt || 0) > (l.posAt || 0) ? r : l;
   m.pos = posSrc.pos || 0; m.finished = !!posSrc.finished; m.posAt = posSrc.posAt || 0;
+  if (posSrc.spot != null) m.spot = posSrc.spot; else delete m.spot;
   m.updatedAt = Math.max(l.updatedAt || 0, r.updatedAt || 0);
   m.parts = r.parts || l.parts;
+  if ((l.marks && l.marks.length) || (r.marks && r.marks.length) || l.marksDel || r.marksDel) {
+    const { marks, del } = mergeMarks(l, r, newer);
+    m.marks = marks;
+    if (Object.keys(del).length) m.marksDel = del; else delete m.marksDel;
+    // notes the other side doesn't have yet: make this copy newer, so it is sent back and both sides end up equal
+    if (marksKey(m) !== marksKey(r)) m.updatedAt = Math.max(m.updatedAt, Date.now());
+  }
   return m;
 }
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
