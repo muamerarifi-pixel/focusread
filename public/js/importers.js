@@ -354,6 +354,61 @@ async function importDocx(file) {
   return { title, text };
 }
 
+/** Mark the lines the PDF's bookmarks point at as chapters (bookmark depth = level). A bookmark whose title
+    isn't printed as a line on its page (an image, a different wording) is added there as a heading line. */
+function markOutline(lines, outline) {
+  const norm = s => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+  const firstOfPage = new Map();
+  lines.forEach((o, i) => { if (o.s && o.s !== '\f' && !firstOfPage.has(o.page)) firstOfPage.set(o.page, i); });
+  const maxDepth = Math.max(...outline.map(e => e.depth));
+  const adds = [];
+  let from = 0, hits = 0, firstHit = -1, id = 0;
+  for (const e of outline) {
+    id++;
+    const tn = norm(e.title), lv = Math.min(3, e.depth);
+    if (tn.length < 2) continue;
+    let done = false;
+    // look on the bookmark's page first, then on the page before it (bookmarks are often one page off)
+    const tryFrom = (lo, stopPage) => {
+      for (let i = Math.max(lo, 0); i < lines.length; i++) {
+        const o = lines[i];
+        if (o.s === '\f') { if (stopPage && o.page >= stopPage) return false; continue; }
+        if (!o.s || o.ol) continue;
+        let acc = norm(o.s);
+        if (!acc || !(tn.startsWith(acc) || acc.startsWith(tn)) || (acc.length < Math.min(6, tn.length))) continue;
+        if (acc.startsWith(tn) && /^\d+$/.test(acc.slice(tn.length))) continue;   // "Hyrja ..... 3" on a contents page
+        const span = [i];
+        for (let k = i + 1; acc.length < tn.length * 0.9 && k < lines.length && span.length < 4; k++) {
+          const nx = lines[k]; if (!nx.s || nx.s === '\f') break;
+          const a2 = acc + norm(nx.s);
+          if (!tn.startsWith(a2) && !a2.startsWith(tn)) break;
+          acc = a2; span.push(k);
+        }
+        if (acc.length < tn.length * 0.85 || acc.length > tn.length * 1.25) continue;
+        for (const k of span) Object.assign(lines[k], { head: true, lv, ol: id, drop: false });
+        if (firstHit < 0 || i < firstHit) firstHit = i;
+        from = Math.max(from, span[span.length - 1] + 1);
+        return true;
+      }
+      return false;
+    };
+    if (e.page && firstOfPage.has(e.page)) {
+      done = tryFrom(Math.max(from, firstOfPage.get(e.page)), e.page + 1)
+        || (firstOfPage.has(e.page - 1) && tryFrom(Math.max(from, firstOfPage.get(e.page - 1)), e.page));
+    } else done = tryFrom(from, 0);
+    if (done) hits++;
+    if (!done && e.page && firstOfPage.has(e.page)) {
+      const at = Math.max(firstOfPage.get(e.page), from);
+      adds.push({ at, o: { s: e.title, size: 0, page: e.page, head: true, lv, ol: id } });
+      if (firstHit < 0) firstHit = at;
+    }
+  }
+  // other big-font lines become subheadings under the bookmarked chapters (a title page before them stays on top)
+  lines.forEach((o, i) => { if (o.head && !o.ol) o.lv = firstHit >= 0 && i < firstHit ? 1 : Math.min(3, maxDepth + 1); });
+  adds.sort((a, b) => b.at - a.at).forEach(a => lines.splice(a.at, 0, a.o));
+  return hits;
+}
+
 async function importPdf(file, onProgress) {
   const pdfjs = await getPdfjs();
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false, disableFontFace: true }).promise;
@@ -389,6 +444,25 @@ async function importPdf(file, onProgress) {
     L.push({ s: '\f', size: 0, page: p }); // page marker
     page.cleanup && page.cleanup();
   }
+  // The PDF's own bookmarks (outline): title + page + depth. The most reliable chapter list a PDF can have.
+  const outline = [];
+  try {
+    const walk = async (items, depth) => {
+      for (const it of items || []) {
+        if (outline.length > 600) return;
+        let page = 0;
+        try {
+          let d = it.dest;
+          if (typeof d === 'string') d = await pdf.getDestination(d);
+          if (Array.isArray(d) && d[0] != null) page = (typeof d[0] === 'object' ? await pdf.getPageIndex(d[0]) : +d[0]) + 1;
+        } catch {}
+        const title = String(it.title || '').replace(/\s+/g, ' ').trim();
+        if (title && /[\p{L}\p{N}]/u.test(title)) outline.push({ title, page, depth });
+        if (depth < 3) await walk(it.items, depth + 1);
+      }
+    };
+    await walk(await pdf.getOutline(), 1);
+  } catch {}
   try { pdf.destroy(); } catch {}
   const clean = L.map(o => (o.s === '\f' ? o : { ...o, s: o.s.replace(/\s+/g, ' ').trim() }));
   const isLine = o => o.s && o.s !== '\f';
@@ -410,6 +484,7 @@ async function importPdf(file, onProgress) {
   if (clean.filter(o => o.head).length > nLines * 0.3) clean.forEach(o => { o.head = false; }); // slides/posters: not a book layout
   const rank = [...headSizes].sort((a, b) => b - a);
   for (const o of clean) if (o.head) o.lv = Math.min(3, rank.indexOf(o.size) + 1);
+  if (outline.length >= 2) markOutline(clean, outline);
 
   // Running headers/footers (book title, author, chapter name repeated on every page)
   if (numPages >= 6) {
@@ -438,8 +513,8 @@ async function importPdf(file, onProgress) {
     if (o.drop) continue;
     if (o.head) {
       flush();
-      if (head && head.lv === o.lv && head.s.length + l.length < 160) head.s += (/^\S+\s+[\dIVXLC]+\.?$/i.test(head.s) ? ': ' : ' ') + l;
-      else { flushHead(); head = { lv: o.lv, s: l }; }
+      if (head && head.lv === o.lv && head.s.length + l.length < 160 && (head.ol || 0) === (o.ol || 0)) head.s += (/^\S+\s+[\dIVXLC]+\.?$/i.test(head.s) ? ': ' : ' ') + l;
+      else { flushHead(); head = { lv: o.lv, s: l, ol: o.ol }; }
       continue;
     }
     if (!l) { flushHead(); flush(); continue; }

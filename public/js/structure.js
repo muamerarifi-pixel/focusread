@@ -66,6 +66,65 @@ const RE_DIALOG = /^[–—]\s*\S/u;
 const RE_NUM_W = /^(?:\d{1,3}|[a-zA-Z])[.)]$|^\((?:\d{1,3}|[a-zA-Z])\)$/;
 const letters = s => (s.match(/\p{L}/gu) || []).length;
 
+// Printed table of contents (v6.9.9): "Përmbajtja / Hyrja ..... 5 / Kapitulli 1: Nijeti ..... 9 …"
+const RE_TOC_HEAD = /^(?:p[eë]rmbajtja|p[eë]rmbajtje|pasqyra(?:\s+e\s+l[eë]nd[eë]s)?|tabela\s+e\s+p[eë]rmbajtjes|l[eë]nda|indeksi|contents|table\s+of\s+contents|inhalt|inhaltsverzeichnis|sadr[zž]aj|i̇?çindekiler|sommaire|table\s+des\s+mati[eè]res|indice)$/iu;
+const RE_KW_NUM = new RegExp(`^(?:${PART_KW}|${CHAP_KW}|sure|surja|sureja|ajeti|java|dita|nr\\.?|no\\.?)$`, 'iu');
+const RE_PART_START = new RegExp(`^(?:${PART_KW})\\b`, 'iu');
+const normW = w => w.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+const isNumW = w => /^\d{1,3}[.)]?$/.test(w) || RE_ROMAN.test(w);
+
+/** "Title … 12 Title … 19" -> entries, from one paragraph (pages must keep going up). */
+function tocEntries(words, last) {
+  const ws = [];
+  for (const w of words) for (const x of w.replace(/\.{2,}|…+|·{2,}|_{3,}/g, ' ').split(' ')) if (x) ws.push(x);
+  const out = [];
+  let cur = [], used = 0;
+  for (const w of ws) {
+    const pg = /^\d{1,4}$/.test(w) && cur.length && cur.length <= 18 && cur.some(x => /\p{L}/u.test(x)) && !RE_KW_NUM.test(cur[cur.length - 1]) && +w >= last && +w < 5000;
+    if (pg) {
+      const title = cur.join(' ').replace(/[\s:;,.–—-]+$/, '');
+      out.push({ title, tw: wordsOf(title).map(normW).filter(Boolean), page: +w });
+      used += cur.length + 1; last = +w; cur = [];
+    } else cur.push(w);
+  }
+  return { out, ws: ws.length, used, last };
+}
+
+/** The longest run of paragraphs that reads like a printed table of contents. */
+function findToc(P) {
+  let best = null;
+  for (let i = 0; i < P.length; i++) {
+    const head = RE_TOC_HEAD.test(P[i].s.replace(/[:.]$/, '').trim());
+    let j = head ? i + 1 : i, last = 0;
+    const entries = [];
+    while (j < P.length && j - i < 600) {
+      const e = tocEntries(P[j].words, last);
+      if (!e.out.length || e.used < e.ws * 0.6) break;
+      entries.push(...e.out); last = e.last; j++;
+    }
+    if (entries.length >= (head ? 3 : 5) && (!best || entries.length > best.entries.length)) best = { a: i, b: j, entries };
+    if (j > i + 1) i = j - 1;
+  }
+  return best;
+}
+
+/** How many words of `pw` (a paragraph's words) spell out the title `tw`; 0 = no match.
+    A chapter number in front ("17.", "IV") may be on one side only. */
+function titleSpan(pw, tw) {
+  const n = pw.map(normW);
+  let a = 0, t = 0;
+  while (a < n.length && !n[a]) a++;
+  if (a < n.length && isNumW(pw[a]) && n[a] !== tw[0]) { a++; }
+  else if (tw.length > 1 && isNumW(tw[0]) && n[a] !== tw[0]) t = 1;
+  let k = a;
+  for (; t < tw.length; t++) {
+    while (k < n.length && !n[k]) k++;
+    if (k >= n.length || n[k] !== tw[t]) return 0;
+    k++;
+  }
+  return k;
+}
+
 function isCaps(s) {
   const up = (s.match(/\p{Lu}/gu) || []).length, low = (s.match(/\p{Ll}/gu) || []).length;
   return up >= 3 && up / (up + low) >= 0.85;
@@ -228,6 +287,20 @@ export function analyze(text) {
   }
 
   // 2) patterns
+  // "1. Hyrja … 2. Qëllimi …": numbered lines that each stand between paragraphs of text (not a list) are headings
+  const numOK = new Set();
+  if (!explicit) {
+    const cand = [];
+    for (let i = 0; i < n; i++) {
+      const p = P[i], prev = P[i - 1], next = P[i + 1];
+      if (p.kind || p.li || p.nw > 12 || !next || next.li || RE_NUMBERED.test(next.s) || (prev && !prev.kind && RE_NUMBERED.test(prev.s))) continue;
+      const ph = patternHeading(p.s, false);
+      if (ph && ph.numbered === 1) cand.push(i);
+    }
+    let up = 0;
+    for (let k = 1; k < cand.length; k++) if (parseInt(P[cand[k]].s, 10) > parseInt(P[cand[k - 1]].s, 10)) up++;
+    if (cand.length >= 2 && up >= (cand.length - 1) * 0.7) cand.forEach(i => numOK.add(i));
+  }
   let digitsAlone = 0;
   for (const p of P) if (!p.kind && RE_DIGITS.test(p.s)) digitsAlone++;
   for (let i = 0; i < n; i++) {
@@ -244,7 +317,7 @@ export function analyze(text) {
     const next = P[i + 1];
     if (ph.numbered === 1) {
       // "3. Something" — only a heading when body text follows (otherwise it's a list)
-      if (!next || next.nw < 12 || RE_NUMBERED.test(next.s)) continue;
+      if (!numOK.has(i) && (!next || next.nw < 12 || RE_NUMBERED.test(next.s))) continue;
     }
     if (ph.numbered && !next) continue;
     p.level = ph.level; p.kind = 'p'; p.bare = ph.bare; p.kw = !!ph.kw;
@@ -255,7 +328,7 @@ export function analyze(text) {
     const cand = P.map(p => (p.kind || noHead(p) ? 0 : shapeLevel(p.s)));
     const bodyish = q => q && !q.kind && q.nw >= 12;
     const endsSentence = q => !q || q.kind || /[.!?…:"”»’)\]]$/.test(q.s);
-    const shaped = [];
+    const shaped = [], weak = [];
     for (let i = 0; i < n; i++) {
       const lv = cand[i];
       if (!lv) continue;
@@ -269,9 +342,11 @@ export function analyze(text) {
       // the very first line in capitals or Title Case is the document's title (often followed by a byline)
       if (!ok && i === 0 && lv <= 2 && n >= 4) ok = true;
       if (!ok) continue;
-      if (lv === 3 && !(p.blank >= 2 || next.nw >= 25)) continue;
+      if (lv === 3 && !(p.blank >= 2 || next.nw >= 25)) { if (next.nw >= 18 && p.nw <= 10) weak.push(i); continue; }
       shaped.push(i);
     }
+    // one short sentence-case line before a paragraph proves little; several of them are the text's subheadings
+    if (weak.length && weak.length + shaped.filter(i => cand[i] === 3).length >= 2) shaped.push(...weak);
     // Too many "headings" means the shape test doesn't fit this text (poems,
     // lists, chat logs…): keep only the confident ones, or none.
     const share = arr => arr.length / n;
@@ -284,14 +359,92 @@ export function analyze(text) {
     for (const i of keep) { P[i].level = cand[i]; P[i].kind = 's'; }
   }
 
+  // 3b) a printed table of contents in the text ("Përmbajtja … 12") is the best map there is:
+  //     find each of its titles in the text, in order, and make those the chapters
+  const toc = n >= 8 ? findToc(P) : null;
+  if (toc) {
+    const hasParts = toc.entries.some(e => RE_PART_START.test(e.title));
+    const firstPart = toc.entries.findIndex(e => RE_PART_START.test(e.title));
+    const lvOf = (e, k) => {
+      if (RE_PART_START.test(e.title) || (hasParts && k < firstPart) || RE_STAND.test(e.title)) return 1;   // "Hyrja" before Part 1 is not inside it
+      const m = e.title.match(/^(\d{1,2}(?:\.\d{1,2})+)\b/);
+      return Math.min(3, (m ? m[1].split('.').length : 1) + (hasParts ? 1 : 0));
+    };
+    const inToc = j => j >= toc.a && j < toc.b;
+    const found = [];
+    let from = 0;
+    for (const [ek, e] of toc.entries.entries()) {
+      if (!e.tw.length) continue;
+      let hit = null;
+      // a) a paragraph that is just the title  b) the title over two paragraphs ("KAPITULLI 1" / "Nijeti")  c) the title glued to its text
+      for (let pass = 0; pass < 3 && !hit; pass++) {
+        for (let j = from; j < n; j++) {
+          if (inToc(j)) { j = toc.b - 1; continue; }
+          const p = P[j];
+          if (p.li === 1 || p.li === 3) continue;
+          if (pass === 0) { const k = titleSpan(p.words, e.tw); if (k && k >= p.nw - 1) { hit = { j, k: p.nw }; break; } }
+          else if (pass === 1) {
+            const q = P[j + 1];
+            if (!q || inToc(j + 1) || p.nw > 8) continue;
+            const k = titleSpan(p.words.concat(q.words), e.tw);
+            if (k > p.nw && k >= p.nw + q.nw - 1) { hit = { j, k: p.nw, two: true }; break; }
+          } else {
+            if (j > from + Math.max(40, n * 0.2)) break;   // glued titles only near where the last chapter was found
+            const k = titleSpan(p.words, e.tw);
+            // a short title glued to its text needs the text to start a sentence after it, or a found chapter before it
+            if (k && p.nw - k >= 3 && (e.tw.length >= 3 || /^["“«„]?\p{Lu}/u.test(p.words[k]) || found.length)) { hit = { j, k, glued: true }; break; }
+          }
+        }
+      }
+      if (!hit) { e.miss = true; continue; }
+      hit.lv = lvOf(e, ek); hit.ek = ek;
+      found.push(hit);
+      from = hit.j + (hit.two ? 2 : 1);
+    }
+    // second look for a missed title: between the chapters found before and after it, glued to its text
+    if (found.length >= 2) {
+      for (const [ek, e] of toc.entries.entries()) {
+        if (!e.miss || !e.tw.length) continue;
+        const before = found.filter(h => h.ek < ek).pop(), after = found.find(h => h.ek > ek);
+        const lo = before ? before.j + (before.two ? 2 : 1) : 0, hi = after ? after.j : n;
+        for (let j = lo; j < hi; j++) {
+          if (inToc(j)) { j = toc.b - 1; continue; }
+          const k = titleSpan(P[j].words, e.tw);
+          if (k && (k >= P[j].nw - 1 || P[j].nw - k >= 3)) { found.push({ j, k: k >= P[j].nw - 1 ? P[j].nw : k, glued: k < P[j].nw - 1, lv: lvOf(e, ek), ek }); break; }
+        }
+      }
+      found.sort((x, y) => x.j - y.j);
+    }
+    if (found.length >= 3 && found.length >= toc.entries.length * 0.4) {
+      // the table of contents decides: other guesses become subheadings or go away
+      const first = Math.min(found[0].j, toc.a);   // headings before the first chapter (a title page) stay on top
+      P.forEach((p, i) => { if (p.kind === 's' && i > 0) { p.kind = ''; p.level = 0; } else if (p.kind) p.level = i < first ? 1 : 3; });
+      for (let x = found.length - 1; x >= 0; x--) {
+        const h = found[x], p = P[h.j];
+        if (h.glued) {   // split the title off its paragraph (words stay the same, only the paragraph break moves)
+          const body = { ...p, words: p.words.slice(h.k), nw: p.nw - h.k, s: p.words.slice(h.k).join(' '), kind: '', level: 0, blank: 0, brk: 0, li: 0, cont: false, mark: 0 };
+          p.words = p.words.slice(0, h.k); p.nw = h.k; p.s = p.words.join(' ');
+          P.splice(h.j + 1, 0, body);
+        }
+        p.kind = 'c'; p.level = h.lv; p.cont = false; p.li = 0;
+        if (h.two) { const q = P[h.j + 1]; q.kind = 'c'; q.level = h.lv; q.cont = true; q.li = 0; }
+      }
+      if (RE_TOC_HEAD.test(P[toc.a].s.replace(/[:.]$/, '').trim())) P[toc.a].level = 1;
+      for (let j = toc.a; j < toc.b; j++) if (P[j] && P[j].kind && !RE_TOC_HEAD.test(P[j].s.replace(/[:.]$/, '').trim())) { P[j].kind = ''; P[j].level = 0; }
+    }
+  }
+  // the lines of a printed table of contents are never chapter headings themselves
+  if (toc) for (let j = toc.a; j < toc.b; j++) if (P[j] && P[j].kind && !RE_TOC_HEAD.test(P[j].s.replace(/[:.]$/, '').trim())) { P[j].kind = ''; P[j].level = 0; }
+  const N2 = P.length;
+
   // 4) "CHAPTER IV" / "The Return" → one heading
-  for (let i = 0; i < n - 1; i++) {
+  for (let i = 0; i < N2 - 1; i++) {
     const p = P[i], q = P[i + 1];
     if (!p.kind || !p.bare || q.cont || p.cont) continue;
     if (q.kind === 'p' && q.kw) continue; // the next chapter marker, not a title
     const shortTitle = q.nw <= 14 && q.s.length <= 110 && !/[.,;:]$/.test(q.s) && /^[\p{Lu}\d"“«„'‘(]/u.test(q.s);
     if (!shortTitle) continue;
-    if (!q.kind && !(P[i + 2] && P[i + 2].nw >= 6) && i + 2 < n) continue;
+    if (!q.kind && !(P[i + 2] && P[i + 2].nw >= 6) && i + 2 < N2) continue;
     q.kind = p.kind; q.level = p.level; q.cont = true;
   }
 
@@ -300,11 +453,11 @@ export function analyze(text) {
   for (const p of P) if (p.kind) p.level = Math.min(3, used.indexOf(p.level) + 1);
 
   const heads = [];
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < N2; i++) {
     const p = P[i];
     if (!p.kind || p.cont) continue;
     let j = i, title = p.s.replace(/[.:]$/, '');
-    while (j + 1 < n && P[j + 1].cont) { j++; title += ': ' + P[j].s.replace(/[.:]$/, ''); }
+    while (j + 1 < N2 && P[j + 1].cont) { j++; title += ': ' + P[j].s.replace(/[.:]$/, ''); }
     heads.push({ p: i, pEnd: j, level: p.level, title: clip(title) });
   }
   return { paras: P.map(p => ({ words: p.words, level: p.kind ? p.level : 0, li: p.kind ? 0 : p.li, brk: p.brk })), heads };
