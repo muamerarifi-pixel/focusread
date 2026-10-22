@@ -878,7 +878,7 @@ function beginTurn(dir) {
     st.parts = { leaf: st.leaf, shade: st.leaf.querySelector('.leaf-shade'), gloss: st.leaf.querySelector('.leaf-gloss'), cast };
     st.leaf.classList.add('turning');
   }
-  st.onCommit = () => { B.turnAt = performance.now(); savePos(); }; // browsing pages: only a tap on a sentence counts as read
+  st.onCommit = () => { const t = performance.now(); B.flips = t - (B.turnAt || 0) < 4000 ? (B.flips || 1) + 1 : 1; B.turnAt = t; savePos(); decorateSpot(); }; // browsing pages: only a tap on a sentence counts as read
   st.onCancel = () => { B.wantLast = false; R.ci = old.ci; render(); };
   setTurn(st, 0);
   flip = st;
@@ -2153,7 +2153,16 @@ function decorateSpot() {
   }
   els.trail.classList.remove('spot');
   const on = !!(host && box && tk != null && pr && tk >= pr[0] && tk <= pr[1]);
-  spotBack(tk != null && !on);
+  // "Back to the ribbon" only when you are checking pages, never while you read:
+  // shown when you went back before the ribbon, or while flipping quickly ahead; staying on a page hides it.
+  let away = tk != null && !on && !R.playing;
+  if (away && S.mode === 'book' && pr && tk < pr[0]) {
+    const B = R.book, since = performance.now() - (B && B.turnAt || 0);
+    away = !!B && B.flips >= 2 && since < 4000;
+    clearTimeout(R.sbT);
+    if (away) R.sbT = setTimeout(() => { if (R.doc && S.mode === 'book') decorateSpot(); }, 4100 - since);
+  }
+  spotBack(away);
   if (host && rib.parentNode !== host) host.appendChild(rib);
   rib.hidden = !on;
   if (!on) return;

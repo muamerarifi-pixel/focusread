@@ -222,3 +222,11 @@ html .reader .book-cols .ph+p.li::first-letter{float:none;font-size:inherit;line
 @keyframes frSpin{to{transform:rotate(360deg)}}
 /* ---- v7.1: the floating bar keeps only page, progress and reading modes ---- */
 .fr-bar .fb-track{width:clamp(70px,22vw,140px)}
+/* ---- v7.3: "back to the ribbon" is a quiet hint, not a red button ---- */
+.spot-back{top:8px;right:10px;gap:5px;padding:4px 10px 4px 7px;border:1px solid color-mix(in srgb,var(--border) 85%,transparent);
+  background:color-mix(in srgb,var(--card,#fff) 70%,transparent);color:var(--fg2);font:600 11.5px/1.2 Inter,system-ui,sans-serif;
+  box-shadow:none;opacity:.6;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:opacity .25s;animation:sbQuiet .5s ease;--bm-fill:#c8312b}
+.spot-back .ic{width:12px;height:12px;color:#c8312b}
+.spot-back:hover,.spot-back:focus-visible{opacity:1}
+.reader.fr-calm .spot-back{opacity:.35}
+@keyframes sbQuiet{from{opacity:0}}
