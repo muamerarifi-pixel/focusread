@@ -9,6 +9,7 @@ import process from 'node:process';
 
 const ROUTES = {
   '/api/sync': () => import('./api/sync.js'),
+  '/api/drive': () => import('./api/drive.js'),
 };
 
 let envCopied = false;

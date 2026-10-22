@@ -1,5 +1,5 @@
 // FocusRead v6.8 — add-on layer (loaded by boot.js after extras.js):
-//  • Settings: rotary knobs instead of sliders, with haptic ticks; a tick on every small change
+//  • Settings: sliders that only move on a sideways drag (never while scrolling), with haptic ticks
 //  • Background dimming (separately for day and night), full screen mode, day/night by the sun in Kosovo
 //  • Reader: a floating page bar (page X / Y in every mode, %, time left, today, streak) with a "+1" on each page,
 //    a "you stopped here" ribbon when you come back, a classic book look
@@ -19,50 +19,79 @@ const NIGHT = ['dark', 'oled', 'night'];
 const isNight = () => NIGHT.includes(document.documentElement.dataset.theme);
 const WPP = 250; // the same "page" as extras.js: 250 words in every reading mode
 
-/* ---------- knobs ---------- */
+/* ---------- sliders (v7.0) ----------
+   A sideways drag changes the value. A finger that scrolls the settings up or down never does:
+   the browser keeps vertical pans (touch-action: pan-y) and a tap on the track does nothing. */
 const KNOBS = [];
 const refreshKnobs = () => KNOBS.forEach(f => f());
-function knob(input, fmt = v => String(v)) {
+const PAD = 15; // thumb radius: the thumb's centre runs from PAD to width - PAD
+function knob(input, fmt = v => String(v)) {   // (name kept: every range in the settings goes through here)
   if (!input || input.dataset.knob) return;
   input.dataset.knob = '1';
-  const min = +input.min, max = +input.max, step = +input.step || 1;
+  const min = +input.min, max = +input.max, step = +input.step || 1, span = (max - min) || 1;
+  const nSteps = Math.round(span / step), dots = nSteps <= 10 ? nSteps + 1 : 5;
   const el = document.createElement('div');
-  el.className = 'fr-knob'; el.tabIndex = 0; el.setAttribute('role', 'slider');
+  el.className = 'fr-sl'; el.tabIndex = 0; el.setAttribute('role', 'slider');
   el.setAttribute('aria-valuemin', min); el.setAttribute('aria-valuemax', max);
-  el.innerHTML = '<svg viewBox="0 0 100 100" aria-hidden="true"><circle class="k-track" cx="50" cy="50" r="44" pathLength="360"/><circle class="k-fill" cx="50" cy="50" r="44" pathLength="360"/></svg><span class="k-dial"><i></i></span><b class="k-val"></b>';
+  const al = input.getAttribute('aria-label'); if (al) el.setAttribute('aria-label', al);
+  let dh = '';
+  for (let i = 0; i < dots; i++) dh += `<i style="--p:${(i / (dots - 1)).toFixed(4)}"></i>`;
+  el.innerHTML = `<span class="sl-track"><span class="sl-fill"></span>${dh}</span><span class="sl-thumb"><b class="sl-tip"></b></span>`;
   input.classList.add('fr-src'); input.tabIndex = -1;
   input.after(el);
   const row = input.closest('label, .shadow-row, .range-row, .fr-row');
-  if (row) row.classList.add('has-knob');
+  if (row) row.classList.add('has-sl');
+  let val = null; // a value next to the label, for rows that don't show one of their own
+  if (row && !row.querySelector('output, .range-out, .sr-o') && !(row.closest('label') || row).querySelector('output')) { val = document.createElement('b'); val.className = 'sl-val'; el.before(val); }
+  const tip = el.querySelector('.sl-tip'), track = el.firstChild;
   const show = () => {
-    const v = +input.value;
-    el.style.setProperty('--f', (v - min) / (max - min || 1));
-    el.lastChild.textContent = fmt(v);
-    el.setAttribute('aria-valuenow', v); el.setAttribute('aria-valuetext', fmt(v));
+    const v = +input.value, t = fmt(v);
+    el.style.setProperty('--f', clamp((v - min) / span, 0, 1));
+    tip.textContent = t; if (val) val.textContent = t;
+    el.setAttribute('aria-valuenow', v); el.setAttribute('aria-valuetext', t);
   };
   const set = v => {
-    v = clamp(Math.round(v / step) * step, min, max);
+    v = +clamp(min + Math.round((v - min) / step) * step, min, max).toFixed(4);
     if (v === +input.value) return;
     input.value = String(v);
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
     haptic(5); show();
   };
-  let last = null, acc = 0, on = false;
-  const angle = e => { const r = el.getBoundingClientRect(), x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2; return Math.hypot(x, y) < 8 ? null : Math.atan2(y, x) * 180 / Math.PI; };
-  el.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); el.setPointerCapture(e.pointerId); on = true; last = angle(e); acc = +input.value; el.classList.add('turning'); haptic(4); });
-  el.addEventListener('pointermove', e => {
-    if (!on) return;
-    const a = angle(e); if (a === null) return;
-    if (last === null) { last = a; return; }
-    let d = a - last; if (d > 180) d -= 360; if (d < -180) d += 360;
-    last = a; acc = clamp(acc + d / 270 * (max - min), min, max); set(acc);
+  const valueAt = x => { const r = track.getBoundingClientRect(); return min + clamp((x - r.left - PAD) / Math.max(1, r.width - 2 * PAD), 0, 1) * span; };
+  let st = null; // { x, y, id, mouse, grab: started on the thumb, v0 }
+  const begin = e => {
+    st.on = true;
+    try { el.setPointerCapture(e.pointerId); } catch {}
+    el.classList.add('dragging'); haptic(4);
+    if (!st.grab) set(valueAt(e.clientX));
+  };
+  const move = e => {
+    if (st.grab) { const r = track.getBoundingClientRect(); set(st.v0 + (e.clientX - st.x) / Math.max(1, r.width - 2 * PAD) * span); }
+    else set(valueAt(e.clientX));
+  };
+  el.addEventListener('pointerdown', e => {
+    if (e.button > 0) return;
+    const th = el.lastChild.getBoundingClientRect();
+    const grab = Math.abs(e.clientX - (th.left + th.width / 2)) <= th.width * 0.9;
+    st = { x: e.clientX, y: e.clientY, id: e.pointerId, mouse: e.pointerType === 'mouse', grab, v0: +input.value, on: false };
+    if (st.mouse) { e.preventDefault(); el.focus({ preventScroll: true }); begin(e); }  // a mouse can't be scrolling: act at once
   });
-  const end = () => { on = false; last = null; el.classList.remove('turning'); };
+  el.addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.id) return;
+    if (!st.on) {
+      const dx = e.clientX - st.x, dy = e.clientY - st.y;
+      if (Math.abs(dy) > 8 && Math.abs(dy) >= Math.abs(dx)) { st = null; return; }   // scrolling the page: hands off
+      if (Math.abs(dx) < 8 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+      begin(e);
+    }
+    e.preventDefault(); move(e);
+  });
+  const end = () => { if (st && st.on) haptic(3); st = null; el.classList.remove('dragging'); };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  el.addEventListener('lostpointercapture', e => { if (e.target === el) end(); });   // (the thumb handing capture to the slider isn't an end)
   el.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); });
-  el.addEventListener('wheel', e => { e.preventDefault(); set(+input.value + (e.deltaY < 0 ? step : -step)); }, { passive: false });
-  el.addEventListener('keydown', e => { const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 5, PageDown: -5 }[e.key]; if (k) { e.preventDefault(); set(+input.value + k * step); } });
+  el.addEventListener('keydown', e => { const k = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1, PageUp: 5, PageDown: -5 }[e.key]; if (k) { e.preventDefault(); set(+input.value + k * step); } else if (e.key === 'Home') set(min); else if (e.key === 'End') set(max); });
   input.addEventListener('input', show);
   KNOBS.push(show); show();
 }
@@ -169,6 +198,83 @@ function initSettings() {
   const ls = $('select[data-set="lang"]'); if (ls) ls.addEventListener('change', () => setTimeout(() => { relabel(); applyDim(); }, 80));
 }
 
+/* ---------- import from Google Drive (a share link; the server fetches the public file) ---------- */
+function driveLinks(text) {
+  const out = [];
+  for (const raw of String(text || '').split(/[\s,]+/)) {
+    const u = raw.trim(); if (!u) continue;
+    let m;
+    if (/\/drive\/(?:u\/\d+\/)?folders\//.test(u)) { out.push({ err: 'folder', u }); continue; }
+    if (/docs\.google\.com\/spreadsheets\//.test(u)) { out.push({ err: 'sheet', u }); continue; }
+    if ((m = /docs\.google\.com\/document\/(?:u\/\d+\/)?d\/([\w-]{20,})/.exec(u))) out.push({ id: m[1], t: 'doc' });
+    else if ((m = /docs\.google\.com\/presentation\/(?:u\/\d+\/)?d\/([\w-]{20,})/.exec(u))) out.push({ id: m[1], t: 'slides' });
+    else if ((m = /\/file\/(?:u\/\d+\/)?d\/([\w-]{20,})/.exec(u)) || (m = /[?&]id=([\w-]{20,})/.exec(u))) out.push({ id: m[1], t: 'file' });
+    else if (/google\.com/.test(u)) out.push({ err: 'bad', u });
+  }
+  return out;
+}
+const DRIVE_ERR = {
+  private: () => L('Skedari nuk është i ndarë. Në Drive: Ndaj → Qasja e përgjithshme → "Kushdo me lidhjen".', 'The file isn\'t shared. In Drive: Share → General access → "Anyone with the link".'),
+  not_found: () => L('Skedari nuk u gjet. Kontrollo lidhjen.', 'File not found. Check the link.'),
+  too_big: () => L('Skedari është mbi 80 MB.', 'The file is over 80 MB.'),
+  folder: () => L('Kjo është lidhje dosjeje. Hap dosjen dhe kopjo lidhjen e skedarit.', 'That\'s a folder link. Open the folder and copy the file\'s link.'),
+  sheet: () => L('Fletët e Google nuk mund të lexohen këtu.', 'Google Sheets can\'t be read here.'),
+  bad: () => L('Kjo nuk duket si lidhje skedari nga Google Drive.', 'That doesn\'t look like a Google Drive file link.'),
+  net: () => L('S\'ka lidhje me internetin. Provo sërish.', 'No connection. Try again.'),
+};
+async function importDrive(links, say) {
+  const FR = window.FocusRead;
+  let ok = 0;
+  for (const l of links) {
+    if (l.err) { say(DRIVE_ERR[l.err]()); continue; }
+    say(L('Po shkarkohet nga Google Drive…', 'Downloading from Google Drive…'), true);
+    let res;
+    try { res = await fetch(`/api/drive?id=${encodeURIComponent(l.id)}&t=${l.t}`, { cache: 'no-store' }); }
+    catch { say(DRIVE_ERR.net()); continue; }
+    if (!res.ok) { let e = 'bad'; try { e = (await res.json()).error || e; } catch {} say((DRIVE_ERR[e] || DRIVE_ERR.net)()); continue; }
+    let name = 'Google Drive'; try { name = decodeURIComponent(res.headers.get('x-file-name') || name); } catch {}
+    const blob = await res.blob();
+    await FR.handleFiles([new File([blob], name, { type: blob.type || res.headers.get('content-type') || '' })]);
+    ok++;
+  }
+  return ok;
+}
+function initDrive() {
+  const fileBtn = $('#fileBtn');
+  if (!fileBtn || $('#driveBtn')) return;
+  const b = document.createElement('button');
+  b.id = 'driveBtn'; b.type = 'button'; b.className = 'btn ghost small';
+  b.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 7.97M12 12v7m-3-3 3 3 3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-sq="Drive" data-en="Drive">Drive</span>';
+  b.title = L('Importo nga Google Drive', 'Import from Google Drive');
+  fileBtn.after(b);
+  b.addEventListener('click', () => {
+    const d = document.createElement('div');
+    d.className = 'fr-dlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true');
+    d.innerHTML = `<div class="fr-dlg-card">
+      <h3>${L('Importo nga Google Drive', 'Import from Google Drive')}</h3>
+      <p class="muted small">${L('Në Drive: Ndaj → "Kushdo me lidhjen" → Kopjo lidhjen. Pastaj ngjite këtu (mund edhe disa, një për rresht). PDF, EPUB, Word, TXT ose Google Docs.', 'In Drive: Share → "Anyone with the link" → Copy link. Paste it here (several work too, one per line). PDF, EPUB, Word, TXT or Google Docs.')}</p>
+      <textarea rows="3" spellcheck="false" autocomplete="off" placeholder="https://drive.google.com/file/d/…"></textarea>
+      <p class="fr-dlg-msg small" aria-live="polite"></p>
+      <div class="fr-dlg-act"><button type="button" class="btn ghost small" data-x>${L('Anulo', 'Cancel')}</button><button type="button" class="btn small" data-go>${L('Importo', 'Import')}</button></div>
+    </div>`;
+    document.body.appendChild(d);
+    const ta = d.querySelector('textarea'), msg = d.querySelector('.fr-dlg-msg'), go = d.querySelector('[data-go]');
+    const close = () => d.remove();
+    const say = (t, busy) => { msg.textContent = t; msg.classList.toggle('busy', !!busy); };
+    d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-x]')) close(); });
+    d.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    setTimeout(() => ta.focus(), 30);
+    go.addEventListener('click', async () => {
+      const links = driveLinks(ta.value);
+      if (!links.length) { say(DRIVE_ERR.bad()); return; }
+      go.disabled = true;
+      const ok = await importDrive(links, say);
+      go.disabled = false;
+      if (ok && ok === links.length) close();
+    });
+  });
+}
+
 /* ---------- no accidental taps while scrolling (home page, settings, lists) ---------- */
 function initTapGuard() {
   let lastScroll = 0, moved = false, sx = 0, sy = 0;
@@ -177,7 +283,7 @@ function initTapGuard() {
   document.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; moved = e.touches.length > 1 || Date.now() - lastScroll < 120; }, { capture: true, passive: true });
   document.addEventListener('touchmove', e => { const t = e.touches[0]; if (Math.hypot(t.clientX - sx, t.clientY - sy) > 10) moved = true; }, { capture: true, passive: true });
   document.addEventListener('click', e => {
-    if (e.detail === 0 || !guarded(e.target) || e.target.closest('.fr-knob')) return;
+    if (e.detail === 0 || !guarded(e.target) || e.target.closest('.fr-sl')) return;
     if (moved || Date.now() - lastScroll < 220) { e.preventDefault(); e.stopPropagation(); moved = false; }
   }, true);
 }
@@ -288,7 +394,7 @@ function initCalm() {
 }
 
 function init() {
-  for (const f of [initSettings, initKnobs, initTapGuard, initPageBar, initCalm]) { try { f(); } catch (e) { console.warn('plus', e); } }
+  for (const f of [initSettings, initKnobs, initTapGuard, initPageBar, initCalm, initDrive]) { try { f(); } catch (e) { console.warn('plus', e); } }
   relabel();
   applyDim();
   new MutationObserver(applyDim).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-paper'] });

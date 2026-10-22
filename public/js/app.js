@@ -2304,4 +2304,4 @@ async function init() {
 init();
 
 // expose for debugging
-window.FocusRead = { S, R, openReader };
+window.FocusRead = { S, R, openReader, handleFiles };
