@@ -181,3 +181,7 @@ w.spot{background:linear-gradient(transparent 62%,color-mix(in srgb,#c8312b 22%,
 .reader.fr-calm .reader-top,.reader.fr-calm .reader-controls{opacity:.06!important}
 .reader.fr-calm .fr-bar{opacity:.14!important}
 .reader.fr-calm .spot-back{opacity:.75}
+/* ---- v6.9.5: desktop page turn — depth to scale with the big pages, so the turning page doesn't swell over the book ---- */
+@media (min-width:900px){ .book{perspective:5200px} }
+.reader.spread .book{perspective:7200px}
+@media (min-width:1600px){ .reader.spread .book{perspective:9000px} }
