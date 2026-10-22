@@ -83,7 +83,7 @@ function makeSwitch(id, sq, e, checked, onChange) {
   inp.addEventListener('change', () => onChange(inp.checked));
   return lab;
 }
-const relabel = () => $$('[data-sq]').forEach(s => { s.textContent = L(s.dataset.sq, s.dataset.en); });
+const relabel = () => { $$('[data-sq]').forEach(s => { s.textContent = L(s.dataset.sq, s.dataset.en); }); $$('[data-tsq]').forEach(b => { const v = L(b.dataset.tsq, b.dataset.ten); b.title = v; b.setAttribute('aria-label', v); }); };
 
 /* ---------- background dimming, day and night apart ---------- */
 const DIMV = ['--bg', '--bg2', '--card', '--soft', '--paper-tone'];
@@ -208,7 +208,7 @@ function initPageBar() {
   bar.className = 'fr-bar'; bar.setAttribute('aria-live', 'polite');
   bar.innerHTML = '<span class="fb-pg"></span><span class="fb-track"><i></i></span><span class="fb-info"></span>' +
     '<span class="fb-modes" role="group">' + [['rsvp', 'i-words', 'Fjalë', 'Words'], ['pacer', 'i-page', 'Faqe', 'Page'], ['book', 'i-book', 'Libër', 'Book']]
-      .map(([m, ic, sq, e]) => `<button type="button" data-m="${m}" data-sq="${sq}" data-en="${e}" title="${L(sq, e)}" aria-label="${L(sq, e)}"><svg class="ic"><use href="#${ic}"/></svg></button>`).join('') + '</span>';
+      .map(([m, ic, sq, e]) => `<button type="button" data-m="${m}" data-tsq="${sq}" data-ten="${e}" title="${L(sq, e)}" aria-label="${L(sq, e)}"><svg class="ic"><use href="#${ic}"/></svg></button>`).join('') + '</span>';
   stage.appendChild(bar);
   // switch the reading mode with one tap, right by the thumb
   const modes = bar.querySelector('.fb-modes');

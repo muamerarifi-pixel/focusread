@@ -162,9 +162,10 @@ w.spot{background:linear-gradient(transparent 62%,color-mix(in srgb,#c8312b 22%,
 /* ---- v6.9.2: the ribbon in every mode, a mode switch on the page bar ---- */
 .rsvp{position:relative}
 #sentenceTrail.spot mark,#sentenceTrail.spot{text-decoration:underline;text-decoration-color:color-mix(in srgb,#c8312b 60%,transparent);text-underline-offset:4px;text-decoration-thickness:2px}
-.fr-bar .fb-modes{display:flex;gap:2px;margin-left:4px;padding-left:6px;border-left:1px solid var(--border);pointer-events:auto;flex:none}
-.fr-bar .fb-modes button{display:grid;place-items:center;width:32px;height:28px;border-radius:999px;color:var(--fg2);transition:background .15s,color .15s,transform .12s}
-.fr-bar .fb-modes button .ic{width:17px;height:17px}
-.fr-bar .fb-modes button.on{background:color-mix(in srgb,var(--fg) 14%,transparent);color:var(--fg)}
-.fr-bar .fb-modes button:active{transform:scale(.92)}
+.fr-bar .fb-modes{display:flex;gap:0;margin-left:2px;padding:2px;border-radius:999px;background:color-mix(in srgb,var(--fg) 7%,transparent);pointer-events:auto;flex:none}
+.fr-bar .fb-modes button{all:unset;box-sizing:border-box;display:grid;place-items:center;width:30px;height:24px;border-radius:999px;color:var(--muted);cursor:pointer;transition:background .18s,color .18s,transform .12s}
+.fr-bar .fb-modes button .ic{width:15px;height:15px}
+.fr-bar .fb-modes button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.16)}
+.fr-bar .fb-modes button:active{transform:scale(.9)}
+.fr-bar .fb-modes button:focus-visible{outline:2px solid var(--focus,#ff3b30);outline-offset:1px}
 .fr-bar .fb-info{min-width:0}
