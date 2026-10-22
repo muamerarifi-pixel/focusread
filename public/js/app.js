@@ -467,8 +467,8 @@ function savePos(force) {
   if (!force && now - R.lastSave < 4000) return;
   R.lastSave = now;
   // Book mode: your place is the ribbon, set by a tap on a sentence — flipping pages does not move it.
-  // Words and guided page read in order: the ribbon follows the sentence you are in.
-  if (S.mode !== 'book') R.doc.spot = R.T.orig[sentenceRange(curTok())[0]] ?? 0;
+  // Words and guided page: the ribbon follows you while you read (playing, or just paused) — not when you only look around.
+  if (S.mode !== 'book' && (R.playing || (R.pausedAt && performance.now() - R.pausedAt < 2000))) R.doc.spot = R.T.orig[sentenceRange(curTok())[0]] ?? 0;
   const p = S.mode === 'book' ? (R.doc.spot ?? R.doc.pos ?? 0) : (R.doc.spot ?? curOrig());
   if (p === R.doc.pos && !force) return;
   if (p !== R.doc.pos) { R.doc.pos = p; R.doc.posAt = now; }
@@ -2101,6 +2101,27 @@ function spotCount(from, to) {
   R.sessionWords += words; R.sessionMs += dt; R.sinceBreakMs += dt;
   ST.addReading(words, dt);
 }
+/** Looked around? One tap brings you back to the ribbon. */
+function spotBack(show) {
+  let b = document.getElementById('spotBack');
+  if (!b) {
+    b = document.createElement('button');
+    b.id = 'spotBack'; b.type = 'button'; b.className = 'spot-back';
+    ['pointerdown', 'pointerup', 'touchstart', 'touchend'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      const tk = spotTok(); if (tk == null) return;
+      const a = sentenceRange(tk)[0];
+      jumpToToken(a, { keepPlaying: false });
+      if (S.mode !== 'rsvp') setTimeout(() => flashPick(a), 80);
+      try { navigator.vibrate && navigator.vibrate(8); } catch {}
+    });
+    $('#stageWrap').appendChild(b);
+  }
+  const en = (S.lang || document.documentElement.lang) === 'en';
+  if (show) { const tk = spotTok(); b.innerHTML = `<svg class="ic"><use href="#i-bookmark"/></svg><span>${en ? 'Back to the ribbon' : 'Kthehu te shiriti'}</span>`; b.title = b.textContent; }
+  b.hidden = !show;
+}
 function decorateSpot() {
   document.querySelectorAll('w.spot').forEach(w => w.classList.remove('spot'));
   let rib = document.getElementById('spotRibbon');
@@ -2112,10 +2133,12 @@ function decorateSpot() {
     const on = tk != null && sentenceRange(tk)[0] === sentenceRange(curTok())[0];
     if (rib.parentNode !== host) host.appendChild(rib);
     rib.hidden = !on; els.trail.classList.toggle('spot', on);
+    spotBack(tk != null && !on && !R.playing);
     return;
   }
   els.trail.classList.remove('spot');
   const on = !!(host && box && tk != null && pr && tk >= pr[0] && tk <= pr[1]);
+  spotBack(tk != null && !on);
   if (host && rib.parentNode !== host) host.appendChild(rib);
   rib.hidden = !on;
   if (!on) return;

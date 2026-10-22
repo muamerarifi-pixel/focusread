@@ -267,8 +267,28 @@ function initPageBar() {
   new MutationObserver(() => { if (!reader.hidden && fsOn()) enterFS(); tick(); }).observe(reader, { attributes: true, attributeFilter: ['hidden'] });
 }
 
+/* ---------- calm reading: the bars fade while you read; the first tap on a faded bar only wakes it ---------- */
+function initCalm() {
+  const reader = $('#readerView');
+  if (!reader) return;
+  const bars = () => [$('.reader-top'), $('.reader-controls'), $('.fr-bar .fb-modes')].filter(Boolean);
+  let timer = 0;
+  const calm = () => { if (!reader.hidden && !$('#settingsSheet:not([hidden])') && !document.querySelector('dialog[open]')) reader.classList.add('fr-calm'); };
+  const later = (ms = 2800) => { clearTimeout(timer); timer = setTimeout(calm, ms); };
+  const wake = (ms) => { reader.classList.remove('fr-calm'); later(ms); };
+  bars().forEach(el => {
+    const guard = e => { if (reader.classList.contains('fr-calm')) { e.preventDefault(); e.stopPropagation(); if (e.type === 'pointerdown' || e.type === 'touchstart') wake(5000); } };
+    ['pointerdown', 'touchstart', 'click'].forEach(ev => el.addEventListener(ev, guard, { capture: true, passive: false }));
+    el.addEventListener('pointerdown', () => later(5000));
+  });
+  reader.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && (e.clientY < 110 || e.clientY > innerHeight - 140)) wake(4000); });
+  reader.addEventListener('pointerdown', () => { if (!reader.classList.contains('fr-calm')) later(); }, true);
+  new MutationObserver(() => { if (reader.hidden) { reader.classList.remove('fr-calm'); clearTimeout(timer); } else later(4000); }).observe(reader, { attributes: true, attributeFilter: ['hidden'] });
+  document.addEventListener('keydown', () => { if (!reader.hidden) later(); });
+}
+
 function init() {
-  for (const f of [initSettings, initKnobs, initTapGuard, initPageBar]) { try { f(); } catch (e) { console.warn('plus', e); } }
+  for (const f of [initSettings, initKnobs, initTapGuard, initPageBar, initCalm]) { try { f(); } catch (e) { console.warn('plus', e); } }
   relabel();
   applyDim();
   new MutationObserver(applyDim).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-paper'] });
