@@ -940,7 +940,7 @@ function bookHint() {
   let seen = ''; try { seen = localStorage.getItem('focusread_pick_tip') || ''; } catch {}
   if (!seen) { try { localStorage.setItem('focusread_pick_tip', '1'); } catch {} setTimeout(() => toast('★ ' + t('pick.long'), { duration: 7000 }), 1600); }
 }
-// Tap the right side (or anywhere but the left edge) to turn forward, the left edge to go back;
+// (v7.6: taps no longer turn pages — swipe does; a tap saves the ribbon)
 // swipe left/right; scroll wheel or trackpad also turn pages.
 let bookGest = null;
 const LONG_MS = 480;
@@ -999,10 +999,20 @@ function releaseBook(e, cancelled) {
   if (getSelection && String(getSelection()).length) return;
   if (Math.abs(dx) < 12 && Math.abs(dy) < 12) {
     if (picking) { pickAt(e.target); return; }
-    const r = sheetBox(), rel = (q.x - r.left) / r.width, edge = R.book && R.book.spread ? 0.1 : 0.18;
-    const tok = wordTok(e.target);
-    if (tok != null && rel > edge && rel < 1 - edge) { setSpot(tok); return; }
-    turnPage(rel < (R.book && R.book.spread ? 0.5 : 0.3) ? -1 : 1);
+    // v7.6: a tap only ever saves the ribbon (pages turn by swiping); a tap beside the text takes the nearest sentence
+    let tok = wordTok(e.target);
+    if (tok == null) {
+      const r = sheetBox();
+      let best = null, bd = 1e9;
+      for (const w of els.bookCols.querySelectorAll('w')) {
+        const b = w.getBoundingClientRect();
+        if (b.right < r.left || b.left > r.right || !b.width) continue;
+        const d = Math.hypot(Math.max(b.left - q.x, 0, q.x - b.right), Math.max(b.top - q.y, 0, q.y - b.bottom) * 1.5);
+        if (d < bd) { bd = d; best = w; }
+      }
+      if (best) tok = +best.dataset.i;
+    }
+    if (tok != null) setSpot(tok);
   }
 }
 els.book.addEventListener('pointerup', e => releaseBook(e, false));
