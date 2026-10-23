@@ -236,3 +236,8 @@ html .reader .book-cols .ph+p.li::first-letter{float:none;font-size:inherit;line
 /* ---- v7.7: the saved sentence — one soft band over the sentence, on every page it spans ---- */
 w.spot{background:none}
 mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent);border-radius:.28em;-webkit-box-decoration-break:clone;box-decoration-break:clone;box-shadow:0 0 0 .14em color-mix(in srgb,#d24a3f 12%,transparent)}
+/* ---- v7.7.1: phones — the spine shadow is thinner and lighter, so it never sits on the first letters ---- */
+@media (max-width:760px){
+  .reader:not(.spread) .book-sheet::before{width:10px;opacity:.55}
+  html[data-classic] .reader:not(.spread) .book-sheet{box-shadow:inset 6px 0 10px -8px rgba(0,0,0,.2),0 8px 30px -10px rgba(0,0,0,.22)}
+}
