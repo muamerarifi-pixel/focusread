@@ -277,6 +277,29 @@ function initDrive() {
   });
 }
 
+/* ---------- v7.8: home — with books, a small "add text" row on top instead of the big welcome; backups in settings ---------- */
+function initHome() {
+  const lib = $('#libList'), dz = $('#dropZone'), hero = $('.hero'), ta = $('#textInput');
+  if (!lib || !dz) return;
+  const libSec = lib.closest('section') || lib.parentNode, anchor = document.createComment('composer');
+  dz.after(anchor);
+  const arrange = () => {
+    const has = !!lib.querySelector('.doc');
+    document.body.classList.toggle('has-books', has);
+    if (has && dz.nextElementSibling !== libSec) libSec.before(dz);
+    else if (!has && anchor.previousSibling !== dz) anchor.before(dz);
+  };
+  new MutationObserver(arrange).observe(lib, { childList: true });
+  arrange();
+  if (ta) { const f = () => dz.classList.toggle('filled', !!ta.value.trim()); ta.addEventListener('input', f); f(); }
+  const foot = $('.lib-foot'), body = $('#settingsSheet .sheet-body');
+  if (foot && body && !$('#backupGroup')) {
+    const g = document.createElement('section'); g.className = 'set-group'; g.id = 'backupGroup';
+    g.innerHTML = `<h3 data-sq="Kopje rezervë" data-en="Backup">${L('Kopje rezervë', 'Backup')}</h3>`;
+    g.appendChild(foot); body.appendChild(g);
+  }
+}
+
 /* ---------- no accidental taps while scrolling (home page, settings, lists) ---------- */
 function initTapGuard() {
   let lastScroll = 0, moved = false, sx = 0, sy = 0;
@@ -317,6 +340,12 @@ function initPageBar() {
   bar.innerHTML = '<span class="fb-pg"></span><span class="fb-track"><i></i></span>' +
     '<span class="fb-modes" role="group">' + [['rsvp', 'i-words', 'Fjalë', 'Words'], ['pacer', 'i-page', 'Faqe', 'Page'], ['book', 'i-book', 'Libër', 'Book']]
       .map(([m, ic, sq, e]) => `<button type="button" data-m="${m}" data-tsq="${sq}" data-ten="${e}" title="${L(sq, e)}" aria-label="${L(sq, e)}"><svg class="ic"><use href="#${ic}"/></svg></button>`).join('') + '</span>';
+  // v7.8: in book mode this is the only bar — the useful buttons of the bottom bar move here
+  const proxy = (cls, id, ic, sq, en, inner) => `<button type="button" class="fb-x ${cls}" data-proxy="${id}" title="${L(sq, en)}" aria-label="${L(sq, en)}">${inner || `<svg class="ic"><use href="#${ic}"/></svg>`}</button>`;
+  bar.insertAdjacentHTML('afterbegin', proxy('fb-nav', 'prevBtn', 'i-left', 'Faqja e mëparshme', 'Previous page') + proxy('', 'markBtn', 'i-star', 'Ruaj fjali', 'Save sentences'));
+  bar.insertAdjacentHTML('beforeend', '<span class="fb-size">' + proxy('', 'sizeDownBtn', '', 'Më e vogël', 'Smaller', 'A<b>−</b>') + proxy('', 'sizeUpBtn', '', 'Më e madhe', 'Larger', 'A<b>+</b>') + '</span>' + proxy('fb-nav', 'nextBtn', 'i-right', 'Faqja tjetër', 'Next page'));
+  bar.addEventListener('click', e => { const b = e.target.closest('[data-proxy]'); if (!b) return; e.stopPropagation(); const t = document.getElementById(b.dataset.proxy); if (t) t.click(); });
+  ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown'].forEach(ev => bar.querySelectorAll('.fb-x').forEach(x => x.addEventListener(ev, e => e.stopPropagation(), { passive: true })));
   stage.appendChild(bar);
   // switch the reading mode with one tap, right by the thumb
   const modes = bar.querySelector('.fb-modes');
@@ -395,7 +424,7 @@ function initCalm() {
 }
 
 function init() {
-  for (const f of [initSettings, initKnobs, initTapGuard, initPageBar, initCalm, initDrive]) { try { f(); } catch (e) { console.warn('plus', e); } }
+  for (const f of [initSettings, initKnobs, initTapGuard, initPageBar, initCalm, initDrive, initHome]) { try { f(); } catch (e) { console.warn('plus', e); } }
   relabel();
   applyDim();
   new MutationObserver(applyDim).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-paper'] });

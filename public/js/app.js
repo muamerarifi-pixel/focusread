@@ -291,11 +291,9 @@ async function renderLibrary() {
       <div class="doc-cover" data-act="open" aria-hidden="true"><span>${TX.esc(ini)}</span><i style="height:${pct}%"></i></div>
       <div class="doc-title" data-act="open" title="${TX.esc(d.title)}">${TX.esc(d.title)}</div>
       <div class="doc-meta">
-        <span class="tag ${d.finished ? 'done' : ''}">${d.finished ? t('lib.finished') : !d.openedAt ? t('lib.new') : kind}</span>
+        ${d.finished || !d.openedAt ? `<span class="tag ${d.finished ? 'done' : ''}">${d.finished ? t('lib.finished') : t('lib.new')}</span>` : ''}
         ${d.author ? `<span>${TX.esc(d.author)}</span>` : ''}
-        <span>${t('lib.words', { n: fmtNum(d.words) })}</span>
         ${!d.finished ? `<span>${t('lib.left', { t: fmtTime(left) })}</span>` : ''}
-        ${d.openedAt ? `<span>${t('lib.opened', { d: relDay(d.openedAt) })}</span>` : ''}
       </div>
       <div class="doc-bar"><i style="width:${pct}%"></i></div>
       <div class="doc-actions">
@@ -410,7 +408,7 @@ async function openReader(id, { resume = false } = {}) {
   R.spotAt = performance.now();
   if (meta.finished) { meta.pos = 0; meta.finished = false; meta.posAt = Date.now(); }
   saveMeta(meta);
-  $('#readerTitle').textContent = meta.title;
+  { const full = String(meta.title || ''), cut = full.split(/\s*[:|—–]\s+/)[0]; const short = full.length > 42 && cut.length >= 8 ? cut : full; $('#readerTitle').textContent = short; $('#readerTitle').title = full; } // v7.8: short title, full one on hover
   els.reader.hidden = false;
   document.body.classList.add('reading');
   els.reader.classList.remove('playing');
@@ -2185,6 +2183,9 @@ function decorateSpot() {
   const runs = [];
   for (const w of ws) { const last = runs[runs.length - 1]; if (last && last[0].parentNode === w.parentNode) last.push(w); else runs.push([w]); }
   for (const run of runs) {
+    // a drop cap (first paragraph after a heading) keeps its first word out of the band
+    const p0 = run[0].parentNode;
+    if (run.length > 1 && p0.firstElementChild === run[0] && p0.previousElementSibling && p0.previousElementSibling.classList.contains('ph')) run.shift();
     try { const r = document.createRange(); r.setStartBefore(run[0]); r.setEndAfter(run[run.length - 1]); const m = document.createElement('mark'); m.className = 'spot-run'; r.surroundContents(m); } catch {}
   }
 }
