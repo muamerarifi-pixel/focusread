@@ -300,3 +300,10 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
 .reader:not(.spread) .book-sheet>.cast-shade,.reader:not(.spread) .book-sheet.leaf.under>.cast-shade{right:auto;width:100%;background:linear-gradient(90deg,rgba(0,0,0,.26),rgba(0,0,0,.08) 14%,transparent 30%);will-change:opacity,transform}
 .book-sheet.leaf{backface-visibility:hidden;transform-style:flat}
 .reader:not(.spread) #bookSheet{overflow:hidden}
+/* ---- v7.10.1: the floating bar is made of the same paper as the page (not white) ---- */
+.fr-bar{background-color:color-mix(in srgb,var(--bg) 86%,transparent);background-image:var(--paper-img,none);background-size:var(--paper-size,auto);
+  border-color:color-mix(in srgb,var(--fg) 9%,transparent);box-shadow:0 1px 2px rgba(0,0,0,.05),0 6px 18px -6px rgba(0,0,0,.14)}
+.fr-bar .fb-modes{background:color-mix(in srgb,var(--fg) 6%,transparent)}
+.fr-bar .fb-modes button.on{background:color-mix(in srgb,var(--bg) 55%,#fff);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+.fr-bar .fb-track{background:color-mix(in srgb,var(--fg) 9%,transparent)}
+[data-theme="dark"] .fr-bar .fb-modes button.on,[data-theme="oled"] .fr-bar .fb-modes button.on,[data-theme="night"] .fr-bar .fb-modes button.on{background:color-mix(in srgb,var(--fg) 16%,transparent)}
