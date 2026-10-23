@@ -223,6 +223,7 @@ async function handleFiles(files) {
       tt.close();
       const meta = await addDoc({ title: r.title, text: r.text, kind: r.kind, author: r.author });
       toast(t('toast.imported', { t: meta.title }), { action: t('lib.read'), onAction: () => openReader(meta.id), duration: 6000 });
+      renderLibrary();
     } catch (e) {
       tt.close();
       if (e.code === 'backup') await restoreBackup(e.data);
@@ -259,15 +260,13 @@ function renderStats() {
   const td = ST.today();
   const goalMs = S.goalMin * 60000;
   const pct = Math.min(1, td.ms / goalMs);
-  const C = 2 * Math.PI * 20;
-  const tot = ST.totals();
-  const days = ST.lastDays(7);
-  const max = Math.max(1, ...days.map(d => d.w));
-  $('#stats').innerHTML = `
-    <div class="stat goal">
-      <div class="ring"><svg viewBox="0 0 46 46"><circle cx="23" cy="23" r="20" class="track"/><circle cx="23" cy="23" r="20" class="arc" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}"/></svg><b>${Math.round(pct * 100)}%</b></div>
-      <div><div class="k">${t('stats.goal')}</div><div class="v">${Math.floor(td.ms / 60000)}<small>/ ${S.goalMin} ${t('stats.min')}</small></div></div>
-    </div>`;
+  const C = 2 * Math.PI * 20, min = Math.floor(td.ms / 60000);
+  const el = $('#goalRing'); if (!el) return;
+  const lbl = `${t('stats.goal')}: ${min} / ${S.goalMin} ${t('stats.min')}`;
+  el.title = lbl; el.setAttribute('aria-label', lbl);
+  el.classList.toggle('done', pct >= 1);
+  el.innerHTML = `<svg viewBox="0 0 46 46"><circle cx="23" cy="23" r="20" class="track"/><circle cx="23" cy="23" r="20" class="arc" stroke-dasharray="${C}" stroke-dashoffset="${C * (1 - pct)}"/></svg><b>${pct >= 1 ? '✓' : min}</b>`;
+  if (!el._on) { el._on = 1; el.addEventListener('click', () => toast(el.title)); }
 }
 
 let libDocs = [];

@@ -226,6 +226,7 @@ export async function syncNow() {
           local.set(id, r);
           st.known[id] = sig(r);
           changed = true;
+          try { changeHandler(); } catch {} // show each arriving book right away
         } else {
           const m = merge(l, r);
           if (!same(m, l)) { await DB.putMeta(m); local.set(id, m); changed = true; }

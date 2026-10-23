@@ -310,3 +310,14 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
 
 /* ---- v7.10.2: the faded running title shows in full (wraps, never "…") ---- */
 .book-run{white-space:normal;overflow:visible;text-overflow:clip;text-wrap:balance;line-height:1.4;overflow-wrap:anywhere}
+
+/* ---- v7.11: daily goal = a small ring in the top bar (no card) ---- */
+.goal-ring{position:relative;width:34px;height:34px;flex:none;padding:0;border:0;background:none;border-radius:50%;cursor:pointer;color:var(--fg)}
+.goal-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.goal-ring circle{fill:none;stroke-width:4.5}
+.goal-ring .track{stroke:color-mix(in srgb,var(--fg) 10%,transparent)}
+.goal-ring .arc{stroke:var(--focus);stroke-linecap:round;transition:stroke-dashoffset .5s ease}
+.goal-ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:11.5px;font-weight:800;font-variant-numeric:tabular-nums}
+.goal-ring.done b{color:var(--focus);font-size:14px}
+.goal-ring:active{transform:scale(.94)}
+.topbar .goal-ring{margin-left:auto;margin-right:6px}
