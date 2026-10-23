@@ -233,3 +233,6 @@ html .reader .book-cols .ph+p.li::first-letter{float:none;font-size:inherit;line
 /* ---- v7.5: no full screen; tapping a sentence never starts Chrome's "Touch to Search" (text you tap isn't selectable on phones) ---- */
 #fsBtn,#fsSwitch{display:none!important}
 @media (pointer:coarse){#pacerPage,#bookCols,#sentenceTrail,#rsvp,.book,.pacer{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}}
+/* ---- v7.7: the saved sentence — one soft band over the sentence, on every page it spans ---- */
+w.spot{background:none}
+mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent);border-radius:.28em;-webkit-box-decoration-break:clone;box-decoration-break:clone;box-shadow:0 0 0 .14em color-mix(in srgb,#d24a3f 12%,transparent)}

@@ -2148,6 +2148,7 @@ function spotBack(show) {
 }
 function decorateSpot() {
   document.querySelectorAll('w.spot').forEach(w => w.classList.remove('spot'));
+  document.querySelectorAll('mark.spot-run').forEach(m => m.replaceWith(...m.childNodes));
   let rib = document.getElementById('spotRibbon');
   if (!rib) { rib = document.createElement('div'); rib.id = 'spotRibbon'; rib.className = 'spot-ribbon'; rib.setAttribute('aria-hidden', 'true'); }
   const host = S.mode === 'book' ? els.bookSheet : S.mode === 'pacer' ? els.pacer : els.rsvp;
@@ -2161,11 +2162,13 @@ function decorateSpot() {
     return;
   }
   els.trail.classList.remove('spot');
-  const on = !!(host && box && tk != null && pr && tk >= pr[0] && tk <= pr[1]);
+  // the saved sentence counts as "on this page" when any part of it is here (it may start on the page before)
+  const sr = tk != null ? sentenceRange(tk) : null;
+  const on = !!(host && box && sr && pr && sr[0] <= pr[1] && sr[1] >= pr[0]);
   // "Back to the ribbon" only when you are checking pages, never while you read:
   // shown when you went back before the ribbon, or while flipping quickly ahead; staying on a page hides it.
   let away = tk != null && !on && !R.playing;
-  if (away && S.mode === 'book' && pr && tk < pr[0]) {
+  if (away && S.mode === 'book' && pr && sr && sr[1] < pr[0]) {
     const B = R.book, since = performance.now() - (B && B.turnAt || 0);
     away = !!B && B.flips >= 2 && since < 4000;
     clearTimeout(R.sbT);
@@ -2175,8 +2178,15 @@ function decorateSpot() {
   if (host && rib.parentNode !== host) host.appendChild(rib);
   rib.hidden = !on;
   if (!on) return;
-  const [a, b] = sentenceRange(tk);
-  for (let i = a; i <= b; i++) { const w = box.querySelector(`w[data-i="${i}"]`); if (w) w.classList.add('spot'); }
+  const [a, b] = sr;
+  const ws = [];
+  for (let i = a; i <= b; i++) { const w = box.querySelector(`w[data-i="${i}"]`); if (w) { w.classList.add('spot'); ws.push(w); } }
+  // one band over the whole sentence (spaces too), not a mark under each word
+  const runs = [];
+  for (const w of ws) { const last = runs[runs.length - 1]; if (last && last[0].parentNode === w.parentNode) last.push(w); else runs.push([w]); }
+  for (const run of runs) {
+    try { const r = document.createRange(); r.setStartBefore(run[0]); r.setEndAfter(run[run.length - 1]); const m = document.createElement('mark'); m.className = 'spot-run'; r.surroundContents(m); } catch {}
+  }
 }
 function toggleBookmark() {
   if (!R.T || !R.doc) return;
