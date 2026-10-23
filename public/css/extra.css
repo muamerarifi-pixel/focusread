@@ -321,3 +321,12 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
 .goal-ring.done b{color:var(--focus);font-size:14px}
 .goal-ring:active{transform:scale(.94)}
 .topbar .goal-ring{margin-left:auto;margin-right:6px}
+/* ---- v7.11.1: the page bar always fits on phones (nothing cut at the right) ---- */
+@media (max-width:520px){
+  .reader.book-mode .fr-bar{width:calc(100% - 16px);max-width:none;justify-content:space-between;gap:4px;padding:5px 6px}
+  .reader.book-mode .fr-bar .fb-track{flex:1 1 auto;width:auto;min-width:18px}
+  .fr-bar .fb-modes button{width:28px}
+  .fr-bar .fb-x{width:30px;height:30px}
+  .fr-bar .fb-size{gap:0}
+}
+@media (max-width:400px){.reader.book-mode .fr-bar .fb-lbl{display:none}}

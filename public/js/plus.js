@@ -374,7 +374,7 @@ function initPageBar() {
     const next = Math.min(100, Math.floor(st.pct / 10) * 10 + 10);
     const toNext = Math.max(1, Math.ceil((Math.ceil(next / 100 * st.total) - st.idx) / WPP));
     modes.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
-    bar.querySelector('.fb-pg').innerHTML = `${L('Faqja', 'Page')} <b>${st.page}</b> / ${st.pages}`;
+    bar.querySelector('.fb-pg').innerHTML = `<span class="fb-lbl">${L('Faqja', 'Page')} </span><b>${st.page}</b> / ${st.pages}`;
     bar.querySelector('.fb-track i').style.width = st.pct + '%';  // (v7.1: only page, progress and modes here — the rest is already in the top bar)
     if (st.id !== last.id) {              // a book was just opened: show where you stopped
       last = { id: st.id, page: st.page }; session = 0;
