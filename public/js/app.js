@@ -297,7 +297,7 @@ async function renderLibrary() {
       </div>
       <div class="doc-bar"><i style="width:${pct}%"></i></div>
       <div class="doc-actions">
-        <button class="btn small ${started ? 'primary' : ''}" data-act="open" type="button"><svg class="ic"><use href="#i-play"/></svg>${started ? t('lib.continue') + ' · ' + pct + '%' : t('lib.read')}</button>
+        <button class="btn small ${started ? 'primary ' + (() => { const a = Date.now() - (d.openedAt || 0); return a < 864e5 ? 'rc-today' : a < 3 * 864e5 ? 'rc-recent' : a < 14 * 864e5 ? 'rc-week' : 'rc-old'; })() : ''}" data-act="open" type="button"><svg class="ic"><use href="#i-play"/></svg>${started ? t('lib.continue') + ' · ' + pct + '%' : t('lib.read')}</button>
         ${d.pos > 0 || d.finished ? `<button class="btn ghost small icon-only" data-act="restart" type="button" title="${t('lib.again')}" aria-label="${t('lib.again')}"><svg class="ic"><use href="#i-restart"/></svg></button>` : ''}
         <span class="grow"></span>
         <button class="btn ghost small icon-only" data-act="rename" type="button" title="${t('lib.rename')}" aria-label="${t('lib.rename')}"><svg class="ic"><use href="#i-edit"/></svg></button>

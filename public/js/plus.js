@@ -281,13 +281,17 @@ function initDrive() {
 function initHome() {
   const lib = $('#libList'), dz = $('#dropZone'), hero = $('.hero'), ta = $('#textInput');
   if (!lib || !dz) return;
-  const libSec = lib.closest('section') || lib.parentNode, anchor = document.createComment('composer');
-  dz.after(anchor);
+  // v7.9: with books, the add-text box is a small field + icons in the library header (it grows when you use it)
+  const head = $('.lib-head'), search = head && head.querySelector('.search'), startRow = $('.start-row');
+  const anchor = document.createComment('composer'), anchor2 = document.createComment('start');
+  dz.after(anchor); if (startRow) startRow.after(anchor2);
+  const ph0 = ta ? ta.placeholder : '';
   const arrange = () => {
     const has = !!lib.querySelector('.doc');
     document.body.classList.toggle('has-books', has);
-    if (has && dz.nextElementSibling !== libSec) libSec.before(dz);
-    else if (!has && anchor.previousSibling !== dz) anchor.before(dz);
+    if (has && head && dz.parentNode !== head) { (search || null) ? search.before(dz) : head.appendChild(dz); if (startRow) dz.appendChild(startRow); }
+    else if (!has && dz.parentNode === head) { anchor.before(dz); if (startRow) anchor2.before(startRow); }
+    if (ta) ta.placeholder = has ? L('Ngjit tekst ose importo…', 'Paste text or import…') : (ta.placeholder === L('Ngjit tekst ose importo…', 'Paste text or import…') ? ph0 : ta.placeholder);
   };
   new MutationObserver(arrange).observe(lib, { childList: true });
   arrange();
