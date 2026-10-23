@@ -154,7 +154,9 @@ function sunTheme(force = false) {
 
 /* ---------- full screen ---------- */
 const fsOn = () => get('focusread_fs', '0') === '1';
-const enterFS = () => { if (!document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen({ navigationUI: 'hide' }).catch(() => {}); };
+const enterFS = () => {}; // (v7.5: full screen removed)
+try { localStorage.setItem('focusread_fs', '0'); } catch {}
+if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
 
 /* ---------- settings additions ---------- */
 function initSettings() {
@@ -182,7 +184,7 @@ function initSettings() {
     const fs = makeSwitch('fsSwitch', 'Ekran i plotë — fsheh shiritin e statusit dhe atë të navigimit', 'Full screen — hides the status bar and the navigation bar', fsOn(), on => {
       put('focusread_fs', on ? '1' : '0'); if (on) enterFS(); else if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     });
-    if (!document.documentElement.requestFullscreen) fs.hidden = true;
+    fs.hidden = true; // (v7.5: full screen removed — it stuttered)
     modeSeg.after(cl, fs);
   }
   document.documentElement.toggleAttribute('data-classic', get('focusread_classic', '1') === '1');

@@ -230,3 +230,6 @@ html .reader .book-cols .ph+p.li::first-letter{float:none;font-size:inherit;line
 .spot-back:hover,.spot-back:focus-visible{opacity:1}
 .reader.fr-calm .spot-back{opacity:.35}
 @keyframes sbQuiet{from{opacity:0}}
+/* ---- v7.5: no full screen; tapping a sentence never starts Chrome's "Touch to Search" (text you tap isn't selectable on phones) ---- */
+#fsBtn,#fsSwitch{display:none!important}
+@media (pointer:coarse){#pacerPage,#bookCols,#sentenceTrail,#rsvp,.book,.pacer{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}}

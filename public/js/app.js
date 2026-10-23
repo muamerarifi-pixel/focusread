@@ -716,7 +716,6 @@ async function tryLock(kind) {
   const so = screen.orientation;
   if (!so || !so.lock) return false;
   try {
-    if (!document.fullscreenElement && fsSupported) { await document.documentElement.requestFullscreen({ navigationUI: 'hide' }); rot.enteredFs = true; }
     await so.lock(kind);
     rot.locked = kind;
     $('#rotBtn').classList.add('on');
