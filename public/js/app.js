@@ -648,6 +648,14 @@ function bookLayout(sec) {
   }
   if (!(T.flags[pe - 1] & TX.F_PARA)) html += `</${tag}>`;
   const cols = els.bookCols, view = els.bookView;
+  // The running title wraps to show in full; reserve the height of the tallest title in this
+  // chapter before measuring, so the page height never changes between turns.
+  const runEl = $('#bookRun'), runs = [];
+  const h0 = headAt(ps); runs.push(h0 >= 0 ? T.heads[h0].title : (R.doc?.title || ''));
+  for (const h of T.heads || []) if (h.t > ps && h.t < pe) runs.push(h.title);
+  runEl.style.minHeight = ''; let runH = 0;
+  for (const r of runs) { runEl.textContent = r; runH = Math.max(runH, runEl.offsetHeight); }
+  runEl.style.minHeight = runH + 'px';
   // Two pages side by side (a spread) when the screen is wide: each page is one column,
   // and one "turn" moves the strip by two columns.
   const spread = !!B.spread;

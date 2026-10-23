@@ -257,10 +257,13 @@ export function prepare(text) {
 }
 
 function sectionTitle(ws, n, top, sq) {
-  const take = ws.slice(0, 8).join(' ').replace(/^[^\p{L}\p{N}]+/u, '').replace(/[\s,;:–—-]+$/, '');
+  // the whole opening sentence (at least 4 words), not a clipped snippet
+  const END = /[.!?…]["'”’»)\]]*$/;
+  let k = 0;
+  while (k < ws.length - 1 && k < 60 && !(k >= 3 && END.test(ws[k]))) k++;
+  const take = ws.slice(0, k + 1).join(' ').replace(/\u0000/g, '').replace(/^[^\p{L}\p{N}]+/u, '').replace(/[\s,;:–—-]+$/, '');
   let snip = take.charAt(0).toUpperCase() + take.slice(1);
-  if (ws.length > 8 || !/[.!?…]$/.test(snip)) snip = snip.replace(/[.!?…]+$/, '') + '…';
-  if (snip.length > 64) snip = snip.slice(0, 62).trimEnd() + '…';
+  if (END.test(ws[k])) snip = snip.replace(/\.(["'”’»)\]]*)$/, '$1'); else if (k < ws.length - 1) snip += '…';
   return top ? (sq ? 'Pjesa ' : 'Part ') + n + ' · ' + snip : n + ' · ' + snip;
 }
 

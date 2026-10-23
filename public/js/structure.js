@@ -239,7 +239,7 @@ function rawParagraphs(text) {
   return out;
 }
 
-const clip = s => (s.length > 120 ? s.slice(0, 117).trimEnd() + '…' : s);
+const clip = s => (s.length > 400 ? s.slice(0, 397).trimEnd() + '…' : s);
 
 /**
  * Analyse text (already normalised).
