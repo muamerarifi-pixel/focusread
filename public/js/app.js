@@ -803,15 +803,17 @@ function turnTarget(dir) {
 }
 // Visual state of a turn at progress f (0 = old page flat, 1 = new page flat).
 // Only transform and opacity change, so the browser animates it on the GPU.
-const easeTurn = 'cubic-bezier(.3,.05,.2,1)';
-function turnFrame(dir, f) {
+const easeTurn = 'cubic-bezier(.32,.08,.24,1)';
+function turnFrame(dir, f, w = 600) {
   const k = dir > 0 ? f : 1 - f;                  // how far the moving leaf has lifted
   const ang = -92 * k, lift = Math.sin(Math.PI * k);
+  const edge = w * Math.cos(ang * Math.PI / 180);  // where the leaf's free edge is over the page below
   return {
-    leaf: { transform: `rotateY(${ang}deg) translateZ(${(lift * 18).toFixed(2)}px)` },
+    leaf: { transform: `rotateY(${ang.toFixed(2)}deg) translateZ(${(lift * 18).toFixed(2)}px)` },
     shade: { opacity: (0.55 * k).toFixed(3) },
     gloss: { opacity: (0.9 * lift).toFixed(3) },
-    cast: { opacity: (dir > 0 ? 0.5 * (1 - f) * Math.min(1, f * 6) : 0.5 * f).toFixed(3) },
+    // the shadow the lifted leaf casts, right beside its edge, strongest mid-turn
+    cast: { opacity: (0.85 * lift).toFixed(3), transform: `translateX(${edge.toFixed(1)}px)` },
   };
 }
 // Two-page spread: the turning page swings around the spine. Its front (old page) lifts
@@ -828,7 +830,7 @@ function spreadFrame(dir, f) {
     cast: { opacity: (0.45 * Math.min(1, f * 2.2) * (f < 0.5 ? 1 : 2 * (1 - f))).toFixed(3) },
   };
 }
-const frameOf = (st, f) => (st.spread ? spreadFrame(st.dir, f) : turnFrame(st.dir, f));
+const frameOf = (st, f) => (st.spread ? spreadFrame(st.dir, f) : turnFrame(st.dir, f, st.w));
 /** Prepare a turn: snapshot the page(s), move the reader to the target, build the leaf. */
 function beginTurn(dir) {
   const B = R.book;
@@ -844,7 +846,7 @@ function beginTurn(dir) {
   R.ci = TX.chunkOfToken(R.starts, tg.tok);
   R.pausedAt = 0;
   render();
-  const st = { dir, f: 0, anims: [], nodes: [], done: false, spread: spread && !!B.spread };
+  const st = { dir, f: 0, anims: [], nodes: [], done: false, spread: spread && !!B.spread, w: sheet.offsetWidth || 600 };
   const cast = document.createElement('i'); cast.className = 'cast-shade';
   if (st.spread) {
     // front = the old page that turns; still = the old page on the other side, which stays
@@ -875,7 +877,7 @@ function beginTurn(dir) {
     st.parts = { leaf: st.leaf, shade: st.leaf.querySelector('.leaf-shade'), gloss: st.leaf.querySelector('.leaf-gloss'), cast };
     st.leaf.classList.add('turning');
   }
-  st.onCommit = () => { const t = performance.now(); B.flips = t - (B.turnAt || 0) < 4000 ? (B.flips || 1) + 1 : 1; B.turnAt = t; savePos(); decorateSpot(); }; // browsing pages: only a tap on a sentence counts as read
+  st.onCommit = () => { const t = performance.now(); B.flips = t - (B.turnAt || 0) < 4000 ? (B.flips || 1) + 1 : 1; B.turnAt = t; requestAnimationFrame(() => { decorateSpot(); setTimeout(savePos, 80); }); }; // browsing pages: only a tap on a sentence counts as read
   st.onCancel = () => { B.wantLast = false; R.ci = old.ci; render(); };
   setTurn(st, 0);
   flip = st;
@@ -891,7 +893,7 @@ function settleTurn(st, commit, ms) {
   const to = commit ? 1 : 0, from = st.f;
   st.target = commit;
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const steps = st.spread ? 16 : 12, frames = {};
+  const steps = 28, frames = {};
   for (const k in st.parts) frames[k] = [];
   for (let i = 0; i <= steps; i++) {
     const v = frameOf(st, from + (to - from) * (i / steps));
@@ -918,7 +920,7 @@ function turnPage(dir) {
     return;
   }
   const st = beginTurn(dir);
-  if (st) settleTurn(st, true, 720);
+  if (st) settleTurn(st, true, 760);
 }
 /** Reading stats for a page you just finished (time is capped so an idle page isn't counted as reading). */
 function bookCount(fromTok, nextTok) {
@@ -2144,9 +2146,11 @@ function spotBack(show) {
   if (show) { const tk = spotTok(); b.innerHTML = `<svg class="ic"><use href="#i-bookmark"/></svg><span>${en ? 'Back to the ribbon' : 'Kthehu te shiriti'}</span>`; b.title = b.textContent; }
   b.hidden = !show;
 }
-function decorateSpot() {
+const clearSpotMarks = () => {
   document.querySelectorAll('w.spot').forEach(w => w.classList.remove('spot'));
   document.querySelectorAll('mark.spot-run').forEach(m => m.replaceWith(...m.childNodes));
+};
+function decorateSpot() {
   let rib = document.getElementById('spotRibbon');
   if (!rib) { rib = document.createElement('div'); rib.id = 'spotRibbon'; rib.className = 'spot-ribbon'; rib.setAttribute('aria-hidden', 'true'); }
   const host = S.mode === 'book' ? els.bookSheet : S.mode === 'pacer' ? els.pacer : els.rsvp;
@@ -2157,6 +2161,7 @@ function decorateSpot() {
     if (rib.parentNode !== host) host.appendChild(rib);
     rib.hidden = !on; els.trail.classList.toggle('spot', on);
     spotBack(tk != null && !on && !R.playing);
+    if (document.querySelector('mark.spot-run')) clearSpotMarks();
     return;
   }
   els.trail.classList.remove('spot');
@@ -2175,6 +2180,10 @@ function decorateSpot() {
   spotBack(away);
   if (host && rib.parentNode !== host) host.appendChild(rib);
   rib.hidden = !on;
+  // v7.10: re-wrapping the sentence relays out the whole chapter — only do it when the sentence changed
+  const want = on ? S.mode + ':' + sr[0] + '-' + sr[1] : '';
+  if (want && box._spotKey === want && box.querySelector('mark.spot-run')) return;
+  clearSpotMarks(); box && (box._spotKey = want);
   if (!on) return;
   const [a, b] = sr;
   const ws = [];

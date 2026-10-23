@@ -296,3 +296,7 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
 /* book mode: the page ends above the floating bar, so the bar never covers text */
 .reader.book-mode .book{padding-bottom:74px}
 @media (max-width:760px){.reader.book-mode .book{padding-bottom:62px}}
+/* ---- v7.10: page turn — a soft shadow that travels with the turning page's edge (single page) ---- */
+.reader:not(.spread) .book-sheet>.cast-shade,.reader:not(.spread) .book-sheet.leaf.under>.cast-shade{right:auto;width:100%;background:linear-gradient(90deg,rgba(0,0,0,.26),rgba(0,0,0,.08) 14%,transparent 30%);will-change:opacity,transform}
+.book-sheet.leaf{backface-visibility:hidden;transform-style:flat}
+.reader:not(.spread) #bookSheet{overflow:hidden}
