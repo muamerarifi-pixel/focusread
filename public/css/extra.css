@@ -277,3 +277,5 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
 #backupGroup .lib-foot{justify-content:flex-start;margin-top:0}
 .has-books #dropZone:not(.filled) #wordCount{display:none}
 .has-books #dropZone:not(.filled) textarea:not(:focus){height:48px;overflow:hidden;white-space:nowrap}
+/* v7.8.1: the bar's own buttons take the tap (the bar used to let taps through to the page) */
+.reader.book-mode .fr-bar,.fr-bar .fb-x,.fr-bar .fb-size{pointer-events:auto}
