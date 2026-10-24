@@ -364,6 +364,11 @@ function initPageBar() {
   // the contents (and notes): tap the book's title too, now that the list button is gone from the top bar
   const rt = document.getElementById('readerTitle');
   if (rt) { rt.style.cursor = 'pointer'; rt.addEventListener('click', () => document.getElementById('tocBtn')?.click()); }
+  // v7.14: the page number is only information: it goes up to the top bar (the progress line is already there)
+  const pgEl = bar.querySelector('.fb-pg');
+  bar.querySelector('.fb-track')?.remove();
+  const topActs = document.querySelector('.reader-top-actions');
+  if (topActs) topActs.insertAdjacentElement('afterbegin', pgEl);
   // the same toggle sits in the home screen's top bar
   const top = document.getElementById('themeBtn');
   if (top) { top.title = top.ariaLabel = L('Ditë / natë', 'Light / dark'); top.addEventListener('click', () => window.FocusRead?.toggleDark?.()); }
@@ -398,8 +403,7 @@ function initPageBar() {
     const next = Math.min(100, Math.floor(st.pct / 10) * 10 + 10);
     const toNext = Math.max(1, Math.ceil((Math.ceil(next / 100 * st.total) - st.idx) / WPP));
     modes.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
-    bar.querySelector('.fb-pg').innerHTML = `<span class="fb-lbl">${L('Faqja', 'Page')} </span><b>${st.page}</b><span class="fb-of"> / ${st.pages}</span>`;
-    bar.querySelector('.fb-track i').style.width = st.pct + '%';  // (v7.1: only page, progress and modes here — the rest is already in the top bar)
+    pgEl.innerHTML = `<span class="fb-lbl">${L('Faqja', 'Page')} </span><b>${st.page}</b><span class="fb-of"> / ${st.pages}</span>`;  // (v7.1: only page, progress and modes here — the rest is already in the top bar)
     if (st.id !== last.id) {              // a book was just opened: show where you stopped
       last = { id: st.id, page: st.page }; session = 0;
       if (false) {

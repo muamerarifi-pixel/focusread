@@ -357,3 +357,8 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
   .fr-bar .fb-th{margin-left:4px}
 }
 @media (max-width:350px){.reader.book-mode .fr-bar .fb-of{display:none}}
+
+/* ---- v7.14: the page number sits in the top bar, the page bar keeps only buttons ---- */
+.reader-top .fb-pg{font:500 12.5px/1.2 Inter,system-ui,sans-serif;color:var(--fg2);white-space:nowrap;font-variant-numeric:tabular-nums;padding:0 6px;align-self:center}
+.reader-top .fb-pg b{color:var(--fg);font-weight:700}
+@media (max-width:400px){.reader-top .fb-pg .fb-lbl{display:none}}
