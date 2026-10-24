@@ -351,7 +351,10 @@ function initPageBar() {
   // day / night in one tap, at the end of the bar (always there, in every mode)
   (bar.querySelector('[data-proxy="nextBtn"]') || bar.lastElementChild).insertAdjacentHTML('beforebegin', `<button type="button" class="fb-th" title="${L('Ditë / natë', 'Light / dark')}" aria-label="${L('Ditë / natë', 'Light / dark')}"><svg class="ic"><use href="#i-moon"/></svg></button>`);
   const th = bar.querySelector('.fb-th');
-  const thIcon = () => { const d = /^(dark|oled|night)$/.test(document.documentElement.dataset.theme || ''); th.querySelector('use').setAttribute('href', d ? '#i-sun' : '#i-moon'); };
+  // the same toggle sits in the home screen's top bar
+  const top = document.getElementById('themeBtn');
+  if (top) { top.title = top.ariaLabel = L('Ditë / natë', 'Light / dark'); top.addEventListener('click', () => window.FocusRead?.toggleDark?.()); }
+  const thIcon = () => { const d = /^(dark|oled|night)$/.test(document.documentElement.dataset.theme || ''); [th, top].forEach(b => b && b.querySelector('use').setAttribute('href', d ? '#i-sun' : '#i-moon')); };
   thIcon();
   new MutationObserver(thIcon).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   th.addEventListener('click', e => { e.stopPropagation(); window.FocusRead?.toggleDark?.(); });
