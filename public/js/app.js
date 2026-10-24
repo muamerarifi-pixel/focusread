@@ -2356,4 +2356,10 @@ async function init() {
 init();
 
 // expose for debugging
-window.FocusRead = { S, R, openReader, handleFiles };
+// one tap between your light and your dark theme (the last ones you used)
+function toggleDark() {
+  const cur = resolvedTheme(), dark = cur === 'dark' || cur === 'oled' || cur === 'night';
+  if (S.theme !== 'auto') S[dark ? 'lastDark' : 'lastLight'] = S.theme;
+  setSetting('theme', dark ? (S.lastLight || 'light') : (S.lastDark || 'dark'));
+}
+window.FocusRead = { S, R, openReader, handleFiles, toggleDark };

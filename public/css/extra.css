@@ -330,3 +330,11 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
   .fr-bar .fb-size{gap:0}
 }
 @media (max-width:400px){.reader.book-mode .fr-bar .fb-lbl{display:none}}
+
+/* ---- v7.12: day / night in one tap at the end of the page bar ---- */
+.fr-bar .fb-th{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:999px;color:var(--fg2);cursor:pointer;flex:none;pointer-events:auto;position:relative;margin-left:3px}
+.fr-bar .fb-th::before{content:"";position:absolute;left:-4px;top:7px;bottom:7px;width:1px;background:color-mix(in srgb,var(--fg) 12%,transparent)}
+.fr-bar .fb-th .ic{width:17px;height:17px}
+.fr-bar .fb-th:active{transform:scale(.9)}
+@media (hover:hover){.fr-bar .fb-th:hover{background:color-mix(in srgb,var(--fg) 7%,transparent);color:var(--fg)}}
+.fr-bar .fb-th:focus-visible{outline:2px solid var(--focus,#ff3b30);outline-offset:1px}

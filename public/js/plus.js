@@ -348,6 +348,14 @@ function initPageBar() {
   const proxy = (cls, id, ic, sq, en, inner) => `<button type="button" class="fb-x ${cls}" data-proxy="${id}" title="${L(sq, en)}" aria-label="${L(sq, en)}">${inner || `<svg class="ic"><use href="#${ic}"/></svg>`}</button>`;
   bar.insertAdjacentHTML('afterbegin', proxy('fb-nav', 'prevBtn', 'i-left', 'Faqja e mëparshme', 'Previous page') + proxy('', 'markBtn', 'i-star', 'Ruaj fjali', 'Save sentences'));
   bar.insertAdjacentHTML('beforeend', '<span class="fb-size">' + proxy('', 'sizeDownBtn', '', 'Më e vogël', 'Smaller', 'A<b>−</b>') + proxy('', 'sizeUpBtn', '', 'Më e madhe', 'Larger', 'A<b>+</b>') + '</span>' + proxy('fb-nav', 'nextBtn', 'i-right', 'Faqja tjetër', 'Next page'));
+  // day / night in one tap, at the end of the bar (always there, in every mode)
+  (bar.querySelector('[data-proxy="nextBtn"]') || bar.lastElementChild).insertAdjacentHTML('beforebegin', `<button type="button" class="fb-th" title="${L('Ditë / natë', 'Light / dark')}" aria-label="${L('Ditë / natë', 'Light / dark')}"><svg class="ic"><use href="#i-moon"/></svg></button>`);
+  const th = bar.querySelector('.fb-th');
+  const thIcon = () => { const d = /^(dark|oled|night)$/.test(document.documentElement.dataset.theme || ''); th.querySelector('use').setAttribute('href', d ? '#i-sun' : '#i-moon'); };
+  thIcon();
+  new MutationObserver(thIcon).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  th.addEventListener('click', e => { e.stopPropagation(); window.FocusRead?.toggleDark?.(); });
+  ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown'].forEach(ev => th.addEventListener(ev, e => e.stopPropagation(), { passive: true }));
   bar.addEventListener('click', e => { const b = e.target.closest('[data-proxy]'); if (!b) return; e.stopPropagation(); const t = document.getElementById(b.dataset.proxy); if (t) t.click(); });
   ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown'].forEach(ev => bar.querySelectorAll('.fb-x').forEach(x => x.addEventListener(ev, e => e.stopPropagation(), { passive: true })));
   stage.appendChild(bar);
