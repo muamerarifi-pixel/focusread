@@ -238,7 +238,7 @@ async function handleFiles(files) {
 async function addDoc({ title, text, kind = 'text', author = '' }) {
   const h = hash(text);
   const existing = (await DB.listDocs()).find(d => d.hash === h);
-  if (existing) return existing;
+  if (existing) { if (existing.archived) { existing.archived = false; await saveMeta(existing); } return existing; }
   const meta = {
     id: DB.uid(), title: (title || TX.guessTitle(text, t('untitled'))).trim(), author, kind,
     words: TX.countWords(text), pos: 0, finished: false, createdAt: Date.now(), updatedAt: Date.now(), posAt: 0, openedAt: 0, hash: h,
@@ -274,11 +274,22 @@ async function renderLibrary() {
   libDocs = await DB.listDocs();
   renderNotesHome();
   const q = ($('#libSearch').value || '').trim().toLowerCase();
-  const list = q ? libDocs.filter(d => (d.title + ' ' + (d.author || '')).toLowerCase().includes(q)) : libDocs;
+  const hit = d => (d.title + ' ' + (d.author || '')).toLowerCase().includes(q);
+  // archived books stay on the phone (and in sync) with everything; they wait in the Archive below the library
+  const active = libDocs.filter(d => !d.archived), archived = libDocs.filter(d => d.archived);
+  const list = q ? active.filter(hit) : active, arch = q ? archived.filter(hit) : archived;
   const box = $('#libList');
   if (!libDocs.length) { box.innerHTML = `<div class="lib-empty">${t('lib.empty')}</div>`; return; }
-  if (!list.length) { box.innerHTML = `<div class="lib-empty">${t('lib.noMatch')}</div>`; return; }
-  box.innerHTML = list.map(d => {
+  const openArch = libArchOpen || (q && arch.length > 0);
+  const archHtml = archived.length
+    ? `<button type="button" class="lib-arch-toggle${openArch ? ' open' : ''}" data-arch-toggle aria-expanded="${openArch}"><svg class="ic"><use href="#i-archive"/></svg><span>${t('lib.archiveTitle')}</span><b>${q ? arch.length + ' / ' : ''}${archived.length}</b><svg class="ic chev"><use href="#i-right"/></svg></button>` +
+      (openArch ? `<p class="lib-arch-note">${t('lib.archiveNote')}</p>` + arch.map(d => docCard(d, true)).join('') : '')
+    : '';
+  box.innerHTML = (list.length ? list.map(d => docCard(d, false)).join('') : (active.length || !archived.length ? `<div class="lib-empty">${t(active.length ? 'lib.noMatch' : 'lib.empty')}</div>` : '')) + archHtml;
+}
+let libArchOpen = false;
+function docCard(d, inArch) {
+  {
     const pct = d.finished ? 100 : d.words ? Math.min(100, Math.round((d.pos / d.words) * 100)) : 0;
     const left = TX.estimateMinutes(Math.max(0, d.words - d.pos), S);
     const started = d.pos > 0 && !d.finished;
@@ -286,7 +297,7 @@ async function renderLibrary() {
     const ttl = String(d.title || '').trim();
     let hue = 0; for (const ch of ttl) hue = (hue * 31 + ch.codePointAt(0)) % 360;
     const ini = ([...ttl.replace(/^[^\p{L}\p{N}]+/u, '')][0] || '·').toUpperCase();
-    return `<article class="doc" data-id="${d.id}" style="--h:${hue}">
+    return `<article class="doc${inArch ? ' is-arch' : ''}" data-id="${d.id}" style="--h:${hue}">
       <div class="doc-cover" data-act="open" aria-hidden="true"><span>${TX.esc(ini)}</span><i style="height:${pct}%"></i></div>
       <div class="doc-title" data-act="open" title="${TX.esc(d.title)}">${TX.esc(d.title)}</div>
       <div class="doc-meta">
@@ -300,23 +311,36 @@ async function renderLibrary() {
         ${d.pos > 0 || d.finished ? `<button class="btn ghost small icon-only" data-act="restart" type="button" title="${t('lib.again')}" aria-label="${t('lib.again')}"><svg class="ic"><use href="#i-restart"/></svg></button>` : ''}
         <span class="grow"></span>
         <button class="btn ghost small icon-only" data-act="rename" type="button" title="${t('lib.rename')}" aria-label="${t('lib.rename')}"><svg class="ic"><use href="#i-edit"/></svg></button>
-        <button class="btn ghost small icon-only" data-act="delete" type="button" title="${t('lib.delete')}" aria-label="${t('lib.delete')}"><svg class="ic"><use href="#i-trash"/></svg></button>
+        ${inArch
+          ? `<button class="btn ghost small icon-only" data-act="unarchive" type="button" title="${t('lib.unarchive')}" aria-label="${t('lib.unarchive')}"><svg class="ic"><use href="#i-unarchive"/></svg></button>
+        <button class="btn ghost small icon-only danger" data-act="delete" type="button" title="${t('lib.deleteForever')}" aria-label="${t('lib.deleteForever')}"><svg class="ic"><use href="#i-trash"/></svg></button>`
+          : `<button class="btn ghost small icon-only" data-act="archive" type="button" title="${t('lib.archive')}" aria-label="${t('lib.archive')}"><svg class="ic"><use href="#i-archive"/></svg></button>`}
       </div>
     </article>`;
-  }).join('');
+  }
 }
 $('#libSearch').addEventListener('input', debounce(renderLibrary, 120));
 $('#libList').addEventListener('click', async e => {
+  if (e.target.closest('[data-arch-toggle]')) { libArchOpen = !libArchOpen; renderLibrary(); return; }
   const btn = e.target.closest('[data-act]'); if (!btn) return;
   const id = btn.closest('.doc').dataset.id;
   const meta = libDocs.find(d => d.id === id); if (!meta) return;
   const act = btn.dataset.act;
+  if (meta.archived && (act === 'open' || act === 'restart')) { meta.archived = false; await saveMeta(meta); }
   if (act === 'open') openReader(id);
+  else if (act === 'archive' || act === 'unarchive') {
+    const on = act === 'archive';
+    meta.archived = on; // kept as false (not removed) so the newer copy wins in sync
+    await saveMeta(meta);
+    renderLibrary();
+    toast(t(on ? 'toast.archived' : 'toast.unarchived', { t: meta.title }), { action: t('toast.undo'), duration: 6000, onAction: async () => { meta.archived = !on; await saveMeta(meta); renderLibrary(); } });
+  }
   else if (act === 'restart') { meta.pos = 0; meta.finished = false; await saveMeta(meta, { pos: true }); openReader(id); }
   else if (act === 'rename') {
     const name = prompt(t('lib.renamePrompt'), meta.title);
     if (name && name.trim()) { meta.title = name.trim().slice(0, 140); await saveMeta(meta); renderLibrary(); }
   } else if (act === 'delete') {
+    if (!confirm(t('lib.confirmDelete', { t: meta.title }))) return;
     const text = await DB.getText(id);
     await DB.deleteDoc(id);
     Sync.noteDelete(id);

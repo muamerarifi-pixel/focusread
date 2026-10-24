@@ -387,3 +387,15 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
 .reader.rot90 .fr-bar .fb-x,.reader.rot90 .fr-bar .fb-th,.reader.rot90 .fr-bar .fb-mv{width:38px;height:38px}
 .reader.rot90 .fr-bar .fb-modes button{width:36px;height:32px}
 .reader.rot90 .book{touch-action:none}
+/* ---- v7.16: Archive instead of delete — archived books wait below the library ---- */
+.lib-arch-toggle{grid-column:1/-1;display:flex;align-items:center;gap:10px;width:100%;margin-top:6px;padding:12px 16px;border-radius:14px;border:1px dashed var(--border);background:transparent;color:var(--fg2);font:600 14px/1.2 Inter,system-ui,sans-serif;cursor:pointer;text-align:left}
+.lib-arch-toggle .ic{width:18px;height:18px;flex:none}
+.lib-arch-toggle span{flex:1}
+.lib-arch-toggle b{font-weight:700;font-variant-numeric:tabular-nums;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--fg) 8%,transparent);color:var(--fg)}
+.lib-arch-toggle .chev{transition:transform .2s}
+.lib-arch-toggle.open .chev{transform:rotate(90deg)}
+@media (hover:hover){.lib-arch-toggle:hover{background:color-mix(in srgb,var(--fg) 4%,transparent);color:var(--fg)}}
+.lib-arch-note{grid-column:1/-1;margin:0 4px;font-size:13px;color:var(--fg2)}
+.doc.is-arch{opacity:.78}
+.doc.is-arch .doc-cover{filter:grayscale(.55)}
+.doc-actions .btn.danger:hover{color:#d33}
