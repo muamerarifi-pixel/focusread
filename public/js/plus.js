@@ -351,6 +351,19 @@ function initPageBar() {
   // day / night in one tap, at the end of the bar (always there, in every mode)
   (bar.querySelector('[data-proxy="nextBtn"]') || bar.lastElementChild).insertAdjacentHTML('beforebegin', `<button type="button" class="fb-th" title="${L('Ditë / natë', 'Light / dark')}" aria-label="${L('Ditë / natë', 'Light / dark')}"><svg class="ic"><use href="#i-moon"/></svg></button>`);
   const th = bar.querySelector('.fb-th');
+  // v7.13: two-page view and the settings come down from the top bar, next to the day/night toggle — within reach
+  let after = th;
+  ['rotBtn', 'readerSettingsBtn'].forEach(id => {
+    const b = document.getElementById(id);
+    if (!b) return;
+    b.classList.add('fb-mv');
+    after.insertAdjacentElement('afterend', b);
+    after = b;
+    ['pointerdown', 'pointerup', 'touchstart', 'touchend', 'mousedown', 'click'].forEach(ev => b.addEventListener(ev, e => e.stopPropagation()));
+  });
+  // the contents (and notes): tap the book's title too, now that the list button is gone from the top bar
+  const rt = document.getElementById('readerTitle');
+  if (rt) { rt.style.cursor = 'pointer'; rt.addEventListener('click', () => document.getElementById('tocBtn')?.click()); }
   // the same toggle sits in the home screen's top bar
   const top = document.getElementById('themeBtn');
   if (top) { top.title = top.ariaLabel = L('Ditë / natë', 'Light / dark'); top.addEventListener('click', () => window.FocusRead?.toggleDark?.()); }
@@ -385,7 +398,7 @@ function initPageBar() {
     const next = Math.min(100, Math.floor(st.pct / 10) * 10 + 10);
     const toNext = Math.max(1, Math.ceil((Math.ceil(next / 100 * st.total) - st.idx) / WPP));
     modes.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === S.mode));
-    bar.querySelector('.fb-pg').innerHTML = `<span class="fb-lbl">${L('Faqja', 'Page')} </span><b>${st.page}</b> / ${st.pages}`;
+    bar.querySelector('.fb-pg').innerHTML = `<span class="fb-lbl">${L('Faqja', 'Page')} </span><b>${st.page}</b><span class="fb-of"> / ${st.pages}</span>`;
     bar.querySelector('.fb-track i').style.width = st.pct + '%';  // (v7.1: only page, progress and modes here — the rest is already in the top bar)
     if (st.id !== last.id) {              // a book was just opened: show where you stopped
       last = { id: st.id, page: st.page }; session = 0;

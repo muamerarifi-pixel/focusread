@@ -338,3 +338,22 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
 .fr-bar .fb-th:active{transform:scale(.9)}
 @media (hover:hover){.fr-bar .fb-th:hover{background:color-mix(in srgb,var(--fg) 7%,transparent);color:var(--fg)}}
 .fr-bar .fb-th:focus-visible{outline:2px solid var(--focus,#ff3b30);outline-offset:1px}
+
+/* ---- v7.13: the top bar keeps only the title; two-page view and settings live in the page bar ---- */
+#tocBtn,#modeBtn{display:none!important}
+.fr-bar .fb-mv{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:999px;color:var(--fg2);cursor:pointer;flex:none;pointer-events:auto}
+.fr-bar .fb-mv .ic{width:17px;height:17px}
+.fr-bar .fb-mv:active{transform:scale(.9)}
+@media (hover:hover){.fr-bar .fb-mv:hover{background:color-mix(in srgb,var(--fg) 7%,transparent);color:var(--fg)}}
+.fr-bar .fb-mv:focus-visible{outline:2px solid var(--focus,#ff3b30);outline-offset:1px}
+.fr-bar #rotBtn.on{color:var(--focus)}
+.reader:not(.book-mode) .fr-bar #rotBtn{display:none}
+@media (max-width:520px){
+  .reader.book-mode .fr-bar{gap:2px;padding:4px 5px}
+  .reader.book-mode .fr-bar .fb-track{display:none}
+  .reader.book-mode .fr-bar .fb-pg{flex:1 1 auto;min-width:0;text-align:center}
+  .fr-bar .fb-x,.fr-bar .fb-th,.fr-bar .fb-mv{width:28px;height:28px}
+  .fr-bar .fb-modes button{width:27px}
+  .fr-bar .fb-th{margin-left:4px}
+}
+@media (max-width:350px){.reader.book-mode .fr-bar .fb-of{display:none}}
