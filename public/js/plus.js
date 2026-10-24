@@ -439,7 +439,8 @@ function initPageBar() {
 function initCalm() {
   const reader = $('#readerView');
   if (!reader) return;
-  const bars = () => [$('.reader-top'), $('.reader-controls'), $('.fr-bar .fb-modes')].filter(Boolean);
+  // v7.15: the page bar is never 'asleep': its buttons answer the first tap (they wake the bars too)
+  const bars = () => [$('.reader-top'), $('.reader-controls')].filter(Boolean);
   let timer = 0;
   const calm = () => { if (!reader.hidden && !$('#settingsSheet:not([hidden])') && !document.querySelector('dialog[open]')) reader.classList.add('fr-calm'); };
   const later = (ms = 2800) => { clearTimeout(timer); timer = setTimeout(calm, ms); };
@@ -451,6 +452,7 @@ function initCalm() {
   });
   reader.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && (e.clientY < 110 || e.clientY > innerHeight - 140)) wake(4000); });
   reader.addEventListener('pointerdown', () => { if (!reader.classList.contains('fr-calm')) later(); }, true);
+  $('.fr-bar')?.addEventListener('pointerdown', () => wake(5000), true);
   new MutationObserver(() => { if (reader.hidden) { reader.classList.remove('fr-calm'); clearTimeout(timer); } else later(4000); }).observe(reader, { attributes: true, attributeFilter: ['hidden'] });
   document.addEventListener('keydown', () => { if (!reader.hidden) later(); });
 }

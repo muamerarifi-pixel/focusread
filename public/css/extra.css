@@ -362,3 +362,28 @@ mark.spot-run{color:inherit;background:color-mix(in srgb,#d24a3f 12%,transparent
 .reader-top .fb-pg{font:500 12.5px/1.2 Inter,system-ui,sans-serif;color:var(--fg2);white-space:nowrap;font-variant-numeric:tabular-nums;padding:0 6px;align-self:center}
 .reader-top .fb-pg b{color:var(--fg);font-weight:700}
 @media (max-width:400px){.reader-top .fb-pg .fb-lbl{display:none}}
+
+/* ---- v7.15: the page bar — bigger buttons that answer the first tap, evenly spaced; the reader turned sideways ---- */
+.reader.fr-calm .fr-bar{opacity:.5!important}
+.fr-bar{gap:4px;padding:4px 8px}
+.fr-bar .fb-x,.fr-bar .fb-th,.fr-bar .fb-mv{width:36px;height:36px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background .12s,transform .1s,color .12s}
+.fr-bar .fb-x:active,.fr-bar .fb-th:active,.fr-bar .fb-mv:active{background:color-mix(in srgb,var(--fg) 13%,transparent);transform:scale(.9)}
+.fr-bar .fb-x .ic,.fr-bar .fb-th .ic,.fr-bar .fb-mv .ic{width:19px;height:19px}
+.fr-bar .fb-modes button{width:34px;height:30px;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.fr-bar .fb-modes button .ic{width:17px;height:17px}
+.fr-bar .fb-th{margin-left:5px}
+@media (max-width:520px){
+  .reader.book-mode .fr-bar{gap:0;padding:3px 5px}
+  .fr-bar .fb-x,.fr-bar .fb-th,.fr-bar .fb-mv{width:34px;height:34px}
+  .fr-bar .fb-modes button{width:30px}
+}
+@media (max-width:350px){
+  .fr-bar .fb-x,.fr-bar .fb-th,.fr-bar .fb-mv{width:32px;height:32px}
+  .fr-bar .fb-modes button{width:28px}
+}
+/* two pages on a phone held upright (the reader turned on the screen): the bar keeps its own size, and a swipe
+   along the turned page turns it (the browser no longer takes it for scrolling) */
+.reader.rot90.book-mode .fr-bar{width:auto;max-width:calc(100% - 24px);justify-content:center;gap:6px;padding:4px 10px}
+.reader.rot90 .fr-bar .fb-x,.reader.rot90 .fr-bar .fb-th,.reader.rot90 .fr-bar .fb-mv{width:38px;height:38px}
+.reader.rot90 .fr-bar .fb-modes button{width:36px;height:32px}
+.reader.rot90 .book{touch-action:none}
