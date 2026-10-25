@@ -777,12 +777,23 @@ function renderBook() {
   const spread = isSpread();
   if (spread !== !!B.spread || els.reader.classList.contains('spread') !== spread) { B.spread = spread; els.reader.classList.toggle('spread', spread); }
   const key = [S.pageSize, S.font, S.spacing, S.bionic, spread, view.clientWidth, view.clientHeight].join('|');
-  const s = R.starts[R.ci];
+  // a page turn names its exact target word: a "chunk" of words (a heading, or 2–3 words) can start on the page before
+  const go = B.go; B.go = null;
+  const s = go ? go.tok : R.starts[R.ci];
   const sec = bookSecOf(s);
-  if (sec !== B.sec || key !== B.key) { B.key = key; bookLayout(sec); }
+  if (sec !== B.sec || key !== B.key) {
+    bookLayout(sec);
+    // laying out can change the page's own height (the running title): remember the size it was laid out at
+    B.key = [S.pageSize, S.font, S.spacing, S.bionic, spread, view.clientWidth, view.clientHeight].join('|');
+  }
   let p = 0;
   if (B.wantLast) { p = B.starts.length - 1; B.wantLast = false; }
   else while (p < B.starts.length - 1 && B.starts[p + 1] <= s) p++;
+  // never stuck: a turn within the same chapter always moves at least one page
+  if (go && !go.last && go.sec === B.sec) {
+    if (go.dir > 0 && p <= go.from && go.from < B.starts.length - 1) p = go.from + 1;
+    else if (go.dir < 0 && p >= go.from && go.from > 0) p = go.from - 1;
+  }
   B.page = p;
   els.bookCols.style.transform = `translateX(${-p * B.stride}px)`;
   // the position you are "at" is the top of the page you are looking at
@@ -874,6 +885,7 @@ function beginTurn(dir) {
   const spread = !!B.spread;
   const still = spread ? leafOf(sheet) : null;
   if (tg.last) B.wantLast = true;
+  B.go = { tok: tg.tok, dir, from: B.page, sec: B.sec, last: !!tg.last };
   R.ci = TX.chunkOfToken(R.starts, tg.tok);
   R.pausedAt = 0;
   render();
@@ -2386,4 +2398,4 @@ function toggleDark() {
   if (S.theme !== 'auto') S[dark ? 'lastDark' : 'lastLight'] = S.theme;
   setSetting('theme', dark ? (S.lastLight || 'light') : (S.lastDark || 'dark'));
 }
-window.FocusRead = { S, R, openReader, handleFiles, toggleDark };
+window.FocusRead = { S, R, openReader, handleFiles, toggleDark, turnPage };
