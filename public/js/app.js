@@ -252,6 +252,44 @@ async function addDoc({ title, text, kind = 'text', author = '' }) {
 async function readComposer() {
   const text = TX.normalize(textInput.value);
   if (!text) { toast(t('toast.empty')); textInput.focus(); return; }
+
+  // If the composer holds a single web link, attempt to fetch and parse the article
+  if (/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(text.trim())) {
+    const u = text.trim();
+    const tt = toast(t('toast.fetchingArticle') || 'Po shkarkohet artikulli nga lidhja…', { sticky: true });
+    try {
+      const res = await fetch(`/api/extract?url=${encodeURIComponent(u)}`, { cache: 'no-store' });
+      if (res.ok) {
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        if (res.headers.get('x-is-binary') === 'true' || ['application/pdf', 'application/epub+zip', 'wordprocessingml'].some(t => ct.includes(t))) {
+          let name = 'Document';
+          try { name = decodeURIComponent(res.headers.get('x-file-name') || name); } catch {}
+          const blob = await res.blob();
+          tt.close();
+          textInput.value = '';
+          await handleFiles([new File([blob], name, { type: blob.type || ct })]);
+          return;
+        }
+        const data = await res.json();
+        const { extractArticle } = await import('./article.js');
+        const extracted = data.type === 'text' ? data : extractArticle(data.html || '', data.url || u, data);
+        tt.close();
+        if (extracted?.text && extracted.text.trim().length >= 20) {
+          textInput.value = '';
+          const meta = await addDoc({
+            title: extracted.title,
+            text: extracted.text,
+            kind: 'web',
+            author: extracted.author || data.siteName || ''
+          });
+          openReader(meta.id);
+          return;
+        }
+      }
+    } catch {}
+    tt.close();
+  }
+
   const meta = await addDoc({ text, kind: 'text' });
   openReader(meta.id);
 }
@@ -1618,8 +1656,41 @@ async function takeSharedFiles() {
       if (!res) continue;
       if (r.url.endsWith('/text')) {
         const j = await res.json().catch(() => null);
-        const body = j ? [j.text, j.url && !String(j.text || '').includes(j.url) ? j.url : ''].filter(Boolean).join('\n\n') : '';
-        if (body.trim()) { const meta = await addDoc({ title: j.title || undefined, text: TX.normalize(body), kind: 'share' }); toast(t('toast.shared'), { action: t('lib.read'), onAction: () => openReader(meta.id), duration: 8000 }); }
+        const rawUrl = (j?.url || '').trim() || (j?.text && /^https?:\/\/\S+$/i.test(j.text.trim()) ? j.text.trim() : '');
+        let handled = false;
+        if (rawUrl && /^https?:\/\//i.test(rawUrl)) {
+          try {
+            const apiRes = await fetch(`/api/extract?url=${encodeURIComponent(rawUrl)}`, { cache: 'no-store' });
+            if (apiRes.ok) {
+              const ct = (apiRes.headers.get('content-type') || '').toLowerCase();
+              if (apiRes.headers.get('x-is-binary') === 'true' || ['application/pdf', 'application/epub+zip', 'wordprocessingml'].some(t => ct.includes(t))) {
+                let name = 'Document';
+                try { name = decodeURIComponent(apiRes.headers.get('x-file-name') || name); } catch {}
+                const blob = await apiRes.blob();
+                files.push(new File([blob], name, { type: blob.type || ct }));
+                handled = true;
+              } else {
+                const data = await apiRes.json();
+                const { extractArticle } = await import('./article.js');
+                const extracted = data.type === 'text' ? data : extractArticle(data.html || '', data.url || rawUrl, data);
+                if (extracted?.text && extracted.text.trim().length >= 20) {
+                  const meta = await addDoc({
+                    title: extracted.title || j.title,
+                    text: extracted.text,
+                    kind: 'web',
+                    author: extracted.author || data.siteName || ''
+                  });
+                  toast(t('toast.shared'), { action: t('lib.read'), onAction: () => openReader(meta.id), duration: 8000 });
+                  handled = true;
+                }
+              }
+            }
+          } catch {}
+        }
+        if (!handled) {
+          const body = j ? [j.text, j.url && !String(j.text || '').includes(j.url) ? j.url : ''].filter(Boolean).join('\n\n') : '';
+          if (body.trim()) { const meta = await addDoc({ title: j.title || undefined, text: TX.normalize(body), kind: 'share' }); toast(t('toast.shared'), { action: t('lib.read'), onAction: () => openReader(meta.id), duration: 8000 }); }
+        }
       } else {
         const name = decodeURIComponent(res.headers.get('X-Name') || 'file');
         const blob = await res.blob();
@@ -2398,4 +2469,4 @@ function toggleDark() {
   if (S.theme !== 'auto') S[dark ? 'lastDark' : 'lastLight'] = S.theme;
   setSetting('theme', dark ? (S.lastLight || 'light') : (S.lastDark || 'dark'));
 }
-window.FocusRead = { S, R, openReader, handleFiles, toggleDark, turnPage };
+window.FocusRead = { S, R, openReader, handleFiles, toggleDark, turnPage, addDoc };

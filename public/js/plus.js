@@ -277,6 +277,172 @@ function initDrive() {
   });
 }
 
+/* ---------- import from Web / URL (articles, web pages, or public documents) ---------- */
+function webLinks(text) {
+  const out = [];
+  for (const raw of String(text || '').split(/[\s,]+/)) {
+    let u = raw.trim();
+    if (!u) continue;
+    if (!/^https?:\/\//i.test(u)) {
+      if (/^[a-z0-9-]+(\.[a-z0-9-]+)+/i.test(u)) u = 'https://' + u;
+      else { out.push({ err: 'bad_link', u }); continue; }
+    }
+    try {
+      const parsed = new URL(u);
+      if (!['http:', 'https:'].includes(parsed.protocol)) out.push({ err: 'bad_link', u });
+      else out.push({ u: parsed.href });
+    } catch {
+      out.push({ err: 'bad_link', u });
+    }
+  }
+  return out;
+}
+
+const WEB_ERR = {
+  bad_link: () => L('Lidhja nuk është e saktë. Vendos një adresë të plotë (p.sh. https://shembull.com).', 'Invalid link. Please provide a full URL (e.g. https://example.com).'),
+  forbidden_host: () => L('Kjo adresë nuk lejohet (rrjet privat).', 'This address is not allowed (private network).'),
+  timeout: () => L('Faqja u vonua shumë për t\'u përgjigjur. Provo sërish.', 'The page took too long to respond. Try again.'),
+  unreachable: () => L('Faqja nuk mund të arrihet. Kontrollo lidhjen.', 'Could not reach the website. Check the link.'),
+  not_found: () => L('Artikulli nuk u gjet (404).', 'Article not found (404).'),
+  access_denied: () => L('Faqja kërkon hyrje ose ka mbrojtje nga leximi automatik.', 'This page requires a login or blocks automated reading.'),
+  too_big: () => L('Faqja ose skedari është mbi 10 MB.', 'The page or file is over 10 MB.'),
+  no_text: () => L('Nuk u gjet tekst artikulli i lexueshëm në këtë faqe.', 'No readable article text found on this page.'),
+  net: () => L('S\'ka lidhje me internetin. Provo sërish.', 'No connection. Try again.'),
+};
+
+async function importWeb(links, say) {
+  const FR = window.FocusRead;
+  let ok = 0;
+  let lastId = null;
+  for (const l of links) {
+    if (l.err) { say(WEB_ERR[l.err]()); continue; }
+    say(L('Po shkarkohet nga uebi…', 'Downloading from web…'), true);
+    let res;
+    try {
+      res = await fetch(`/api/extract?url=${encodeURIComponent(l.u)}`, { cache: 'no-store' });
+    } catch {
+      say(WEB_ERR.net());
+      continue;
+    }
+    if (!res.ok) {
+      let e = 'unreachable';
+      try { e = (await res.json()).error || e; } catch {}
+      say((WEB_ERR[e] || WEB_ERR.unreachable)());
+      continue;
+    }
+
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    const isBin = res.headers.get('x-is-binary') === 'true' || ['application/pdf', 'application/epub+zip', 'wordprocessingml'].some(t => ct.includes(t));
+
+    if (isBin) {
+      say(L('Po përpunohet skedari…', 'Processing file…'), true);
+      let name = 'Document';
+      try { name = decodeURIComponent(res.headers.get('x-file-name') || name); } catch {}
+      const blob = await res.blob();
+      await FR.handleFiles([new File([blob], name, { type: blob.type || ct })]);
+      ok++;
+    } else {
+      say(L('Po pastrohet teksti i artikullit…', 'Extracting article…'), true);
+      let data = null;
+      try { data = await res.json(); } catch { say(WEB_ERR.no_text()); continue; }
+      let extracted = null;
+      if (data.type === 'text') {
+        extracted = { title: data.title, author: '', text: data.text };
+      } else {
+        try {
+          const { extractArticle } = await import('./article.js');
+          extracted = extractArticle(data.html || '', data.url || l.u, data);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (!extracted || !extracted.text || extracted.text.trim().length < 20) {
+        say(WEB_ERR.no_text());
+        continue;
+      }
+
+      if (FR && FR.addDoc) {
+        const meta = await FR.addDoc({
+          title: extracted.title,
+          text: extracted.text,
+          kind: 'web',
+          author: extracted.author || data.siteName || ''
+        });
+        lastId = meta.id;
+        ok++;
+      } else {
+        const file = new File([extracted.text], `${extracted.title || 'Article'}.txt`, { type: 'text/plain' });
+        await FR.handleFiles([file]);
+        ok++;
+      }
+    }
+  }
+
+  if (ok === 1 && lastId && links.length === 1 && FR && FR.openReader) {
+    FR.openReader(lastId);
+  }
+  return ok;
+}
+
+function initWeb() {
+  const fileBtn = $('#fileBtn');
+  if (!fileBtn || $('#webBtn')) return;
+  const b = document.createElement('button');
+  b.id = 'webBtn'; b.type = 'button'; b.className = 'btn ghost small';
+  b.innerHTML = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><line x1="2" y1="12" x2="22" y2="12"/></svg><span data-sq="Ueb" data-en="Web">Web</span>';
+  b.title = L('Importo nga uebi (artikull ose lidhje)', 'Import from web (article or link)');
+  const driveBtn = $('#driveBtn');
+  (driveBtn || fileBtn).after(b);
+
+  b.addEventListener('click', () => {
+    const d = document.createElement('div');
+    d.className = 'fr-dlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-modal', 'true');
+    d.innerHTML = `<div class="fr-dlg-card">
+      <h3>${L('Importo nga uebi', 'Import from web')}</h3>
+      <p class="muted small">${L('Ngjit lidhjen e një artikulli, faqeje ose skedari (PDF, EPUB, Word, TXT). FocusRead merr tekstin e pastruar pa reklama apo shpërqendrime. Mund edhe disa lidhje, një për rresht.', 'Paste a link to an article, webpage, or file (PDF, EPUB, Word, TXT). FocusRead extracts clean text without clutter. Multiple links work too, one per line.')}</p>
+      <textarea rows="3" spellcheck="false" autocomplete="off" placeholder="https://example.com/artikull…"></textarea>
+      <p class="fr-dlg-msg small" aria-live="polite"></p>
+      <div class="fr-dlg-act">
+        <button type="button" class="btn ghost small" data-paste>${L('Ngjit', 'Paste')}</button>
+        <span style="flex:1"></span>
+        <button type="button" class="btn ghost small" data-x>${L('Anulo', 'Cancel')}</button>
+        <button type="button" class="btn small" data-go>${L('Importo', 'Import')}</button>
+      </div>
+    </div>`;
+    document.body.appendChild(d);
+    const ta = d.querySelector('textarea'), msg = d.querySelector('.fr-dlg-msg'), go = d.querySelector('[data-go]'), pasteBtn = d.querySelector('[data-paste]');
+    const close = () => d.remove();
+    const say = (t, busy) => { msg.textContent = t; msg.classList.toggle('busy', !!busy); };
+
+    if (!navigator.clipboard?.readText) pasteBtn.remove();
+    else {
+      pasteBtn.addEventListener('click', async () => {
+        try {
+          const txt = await navigator.clipboard.readText();
+          if (txt) {
+            ta.value = (ta.value ? ta.value + '\n' : '') + txt.trim();
+            ta.focus();
+          }
+        } catch {}
+      });
+    }
+
+    d.addEventListener('click', e => { if (e.target === d || e.target.closest('[data-x]')) close(); });
+    d.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    setTimeout(() => ta.focus(), 30);
+
+    go.addEventListener('click', async () => {
+      const links = webLinks(ta.value);
+      if (!links.length) { say(WEB_ERR.bad_link()); return; }
+      go.disabled = true;
+      const ok = await importWeb(links, say);
+      go.disabled = false;
+      if (ok && ok === links.length) close();
+    });
+  });
+}
+
 /* ---------- v7.8: home — with books, a small "add text" row on top instead of the big welcome; backups in settings ---------- */
 function initHome() {
   const lib = $('#libList'), dz = $('#dropZone'), hero = $('.hero'), ta = $('#textInput');
@@ -458,7 +624,7 @@ function initCalm() {
 }
 
 function init() {
-  for (const f of [initSettings, initKnobs, initTapGuard, initPageBar, initCalm, initDrive, initHome]) { try { f(); } catch (e) { console.warn('plus', e); } }
+  for (const f of [initSettings, initKnobs, initTapGuard, initPageBar, initCalm, initDrive, initWeb, initHome]) { try { f(); } catch (e) { console.warn('plus', e); } }
   relabel();
   applyDim();
   new MutationObserver(applyDim).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-paper'] });

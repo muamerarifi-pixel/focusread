@@ -30,9 +30,7 @@ After changing any file in `public/`, run `node scripts/build-sw.mjs` so install
 - **Home page:** saved sentences and bookmarks in one folder per book, plus a Continue card.
 - **Display:** 10 reading fonts, text colour and transparency, themes and paper textures, a 3-line
   drop cap in book mode, text size buttons in the bottom bar.
-- **Import:** PDF (pdf.js), EPUB and DOCX (JSZip), TXT, MD, HTML, SRT. On phones the picker shows all
-  files and the type is detected from the content. Files can also be shared to FocusRead from other
-  apps (Share → FocusRead).
+- **Import:** PDF (pdf.js), EPUB and DOCX (JSZip), TXT, MD, HTML, SRT, plus **Web articles & URLs** (paste any article link or direct document URL to extract clean, distraction-free text with automatic chapter headings, or share links directly to FocusRead via the system Share menu). On phones the picker shows all files and the type is detected from the content.
 - **Sync:** a 16-character code; the server only stores a hash of it and AES-GCM ciphertext.
 - Read aloud, chapters and contents, reading stats and a daily goal, Albanian and English.
 
@@ -40,7 +38,10 @@ After changing any file in `public/`, run `node scripts/build-sw.mjs` so install
 
 - `public/`: the app, served by Workers Static Assets (`index.html`, `css/`, `js/`, `fonts/`,
   `icons/`, `vendor/`, `sw.js`, `manifest.webmanifest`, `_headers`)
+- `public/js/article.js`: readability parser that extracts structured headings and articles from web HTML
 - `api/sync.js`: the sync API (Neon Postgres, tables `fr_items` and `fr_texts`)
+- `api/drive.js`: Google Drive file download proxy
+- `api/extract.js`: SSRF-protected web article and document fetch endpoint
 - `worker.js`: routes `/api/*` to the API and serves everything else from `public/`
 - `scripts/build-sw.mjs`: refreshes the service worker's file list and version
 - `scripts/render-icons.py` + `scripts/maskable.svg`: render the PNG icons from `public/icons/icon.svg`
